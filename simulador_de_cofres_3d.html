@@ -1,0 +1,1701 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Caza de Tesoros 3D - Simulador de Cofres</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js r128 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --font-display: 'Fredoka', sans-serif;
+            --font-body: 'Inter', sans-serif;
+        }
+        * {
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: var(--font-body);
+            background: radial-gradient(circle at 50% 35%, #1e1b4b 0%, #090d16 75%, #05070b 100%);
+            color: #ffffff;
+            overflow: hidden;
+            height: 100dvh;
+            width: 100vw;
+            margin: 0;
+            padding: 0;
+        }
+        .font-display {
+            font-family: var(--font-display);
+            letter-spacing: 0.03em;
+        }
+        /* Custom tactile 3D game buttons */
+        .btn-3d {
+            transition: transform 0.08s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.08s ease, filter 0.15s ease;
+            position: relative;
+        }
+        .btn-3d:active:not(:disabled) {
+            transform: translateY(4px) scale(0.97);
+        }
+        .btn-3d-blue {
+            background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%);
+            box-shadow: 0 5px 0 #0369a1, 0 8px 15px rgba(2, 132, 199, 0.4);
+        }
+        .btn-3d-blue:active:not(:disabled) {
+            box-shadow: 0 1px 0 #0369a1, 0 3px 8px rgba(2, 132, 199, 0.4);
+        }
+        .btn-3d-purple {
+            background: linear-gradient(180deg, #c084fc 0%, #7e22ce 100%);
+            box-shadow: 0 5px 0 #581c87, 0 8px 15px rgba(126, 34, 206, 0.4);
+        }
+        .btn-3d-purple:active:not(:disabled) {
+            box-shadow: 0 1px 0 #581c87, 0 3px 8px rgba(126, 34, 206, 0.4);
+        }
+        .btn-3d-orange {
+            background: linear-gradient(180deg, #fb923c 0%, #ea580c 100%);
+            box-shadow: 0 5px 0 #9a3412, 0 8px 15px rgba(234, 88, 12, 0.4);
+        }
+        .btn-3d-orange:active:not(:disabled) {
+            box-shadow: 0 1px 0 #9a3412, 0 3px 8px rgba(234, 88, 12, 0.4);
+        }
+        .btn-3d-gold {
+            background: linear-gradient(180deg, #fde047 0%, #eab308 50%, #ca8a04 100%);
+            box-shadow: 0 5px 0 #854d0e, 0 8px 20px rgba(234, 179, 8, 0.5);
+            color: #1c1917;
+        }
+        .btn-3d-gold:active:not(:disabled) {
+            box-shadow: 0 1px 0 #854d0e, 0 3px 10px rgba(234, 179, 8, 0.4);
+        }
+
+        /* Glassmorphism */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.78);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+        }
+
+        /* Animations */
+        @keyframes popIn {
+            0% { opacity: 0; transform: scale(0.7) translateY(20px); }
+            70% { transform: scale(1.03) translateY(-2px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .animate-pop-in {
+            animation: popIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        @keyframes floatToast {
+            0% { opacity: 0; transform: translate(-50%, 15px) scale(0.9); }
+            15% { opacity: 1; transform: translate(-50%, 0px) scale(1); }
+            85% { opacity: 1; transform: translate(-50%, -6px) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -18px) scale(0.95); }
+        }
+        .toast-anim {
+            animation: floatToast 1.55s ease-out forwards;
+        }
+
+        @keyframes shineGlow {
+            0%, 100% { filter: drop-shadow(0 0 8px currentColor); }
+            50% { filter: drop-shadow(0 0 18px currentColor); }
+        }
+        .glow-pulse {
+            animation: shineGlow 2s infinite ease-in-out;
+        }
+
+        /* Custom Scrollbar for Modals */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.4);
+            border-radius: 8px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.4);
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body class="relative flex flex-col justify-between select-none overflow-hidden">
+
+    <!-- Screen Flash Overlay for Big Hits -->
+    <div id="screenFlash" class="pointer-events-none fixed inset-0 z-40 opacity-0 transition-opacity duration-300"></div>
+
+    <!-- Main 3D Viewport Canvas (Chest Scene) -->
+    <div id="canvasContainer" class="fixed inset-0 z-0 cursor-grab active:cursor-grabbing"></div>
+
+    <!-- TOP HUD: Stats & Controls -->
+    <header class="relative z-10 w-full max-w-lg mx-auto px-3 pt-3 flex flex-col gap-2 pointer-events-none">
+        <!-- Top Row: Counters & Action Icons -->
+        <div class="flex items-center justify-between gap-2 pointer-events-auto">
+            <!-- Chests & Hits Stats -->
+            <div class="glass-panel rounded-2xl px-3 py-1.5 flex items-center gap-3 shadow-lg">
+                <div class="flex items-center gap-1.5">
+                    <div class="w-7 h-7 rounded-xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-300">
+                        <i class="fa-solid fa-box-open text-sm"></i>
+                    </div>
+                    <div>
+                        <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold leading-none">Abiertos</div>
+                        <div id="statTotalChests" class="font-display text-sm sm:text-base font-bold text-white leading-tight">0</div>
+                    </div>
+                </div>
+                <div class="h-6 w-[1px] bg-white/10"></div>
+                <div class="flex items-center gap-1.5">
+                    <div class="w-7 h-7 rounded-xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-300">
+                        <i class="fa-solid fa-gem text-sm"></i>
+                    </div>
+                    <div>
+                        <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold leading-none">Tesoros</div>
+                        <div id="statTotalHits" class="font-display text-sm sm:text-base font-bold text-emerald-300 leading-tight">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Buttons: Collection / Odds & Sound -->
+            <div class="flex items-center gap-1.5">
+                <button id="btnOpenCatalog" class="glass-panel hover:bg-slate-800/80 active:scale-95 transition rounded-2xl px-3 py-2 flex items-center gap-1.5 shadow-lg border border-indigo-400/30 text-indigo-200 font-semibold text-xs sm:text-sm">
+                    <i class="fa-solid fa-cubes text-indigo-400"></i>
+                    <span>Colección 3D</span>
+                    <span id="badgeUniqueCount" class="bg-indigo-500/40 border border-indigo-400/50 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">0/7</span>
+                </button>
+                <button id="btnToggleSound" class="glass-panel hover:bg-slate-800/80 active:scale-95 transition w-9 h-9 rounded-2xl flex items-center justify-center shadow-lg text-slate-200" title="Sonido">
+                    <i id="iconSound" class="fa-solid fa-volume-high text-sm"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Second Row: Luck Multiplier Selector & Best Drop Banner -->
+        <div class="flex items-center justify-between gap-2 pointer-events-auto">
+            <!-- Luck Multiplier Toggle (To let user test ultra-rare 1:1.5M items if desired) -->
+            <div class="glass-panel rounded-xl px-2.5 py-1 flex items-center gap-1.5 text-xs shadow-md">
+                <i class="fa-solid fa-clover text-emerald-400"></i>
+                <span class="text-slate-300 font-medium text-[11px]">Suerte:</span>
+                <button id="btnCycleLuck" class="bg-slate-800 hover:bg-slate-700 border border-white/15 rounded-lg px-2 py-0.5 font-display text-amber-300 font-bold text-[11px] transition active:scale-95">
+                    1x (Real)
+                </button>
+            </div>
+
+            <!-- Rarest Find Pill -->
+            <div id="bestDropPill" class="glass-panel rounded-xl px-2.5 py-1 flex items-center gap-1.5 text-[11px] text-slate-300 truncate max-w-[58%] shadow-md">
+                <i class="fa-solid fa-crown text-amber-400 text-xs"></i>
+                <span class="truncate">Mejor: <strong id="statBestDrop" class="text-slate-400 font-semibold">Ninguno aún</strong></span>
+            </div>
+        </div>
+    </header>
+
+    <!-- CENTER FLOATING FEEDBACK & INSTRUCTIONS -->
+    <main class="relative z-10 flex-1 flex flex-col items-center justify-between pointer-events-none py-2">
+        <!-- Interactive 3D Hint -->
+        <div class="mt-1 text-center px-4">
+            <div id="chestStatusBadge" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/35 border border-white/10 text-[11px] text-slate-300 backdrop-blur-sm">
+                <i class="fa-solid fa-hand-pointer text-amber-300 animate-bounce"></i>
+                <span>Arrastra para rotar el cofre 3D • Probabilidades reales</span>
+            </div>
+        </div>
+
+        <!-- Floating Toast Container for Empty Rolls or Quick Info -->
+        <div id="toastContainer" class="relative w-full h-14 pointer-events-none"></div>
+    </main>
+
+    <!-- BOTTOM CONTROL DOCK: Batch Open Buttons (1x, 10x, 30x, 50x) -->
+    <footer class="relative z-10 w-full max-w-lg mx-auto px-3 pb-4 pt-1 pointer-events-auto">
+        <div class="glass-panel rounded-3xl p-3 shadow-2xl border border-white/15">
+            <!-- Quick Options Bar -->
+            <div class="flex items-center justify-between px-1 mb-2.5 text-xs text-slate-300">
+                <span class="font-display uppercase tracking-wider text-[11px] text-amber-300 flex items-center gap-1.5">
+                    <i class="fa-solid fa-bolt"></i> Apertura Instantánea de Golpe
+                </span>
+                <label class="flex items-center gap-1.5 cursor-pointer select-none text-[11px] text-slate-300 hover:text-white">
+                    <input type="checkbox" id="chkPopupOnEmpty" class="rounded bg-slate-800 border-slate-600 text-amber-500 focus:ring-0 w-3.5 h-3.5">
+                    <span>Pop-up si sale vacío</span>
+                </label>
+            </div>
+
+            <!-- 4 Batch Buttons Grid -->
+            <div class="grid grid-cols-4 gap-2 sm:gap-2.5">
+                <button onclick="openChestBatch(1)" class="btn-3d btn-3d-blue rounded-2xl py-2.5 px-1 flex flex-col items-center justify-center text-white">
+                    <span class="text-[10px] uppercase font-bold tracking-wider opacity-90">Abrir</span>
+                    <span class="font-display text-xl sm:text-2xl font-bold leading-none mt-0.5">x1</span>
+                    <span class="text-[9px] opacity-80 mt-0.5">1 Cofre</span>
+                </button>
+
+                <button onclick="openChestBatch(10)" class="btn-3d btn-3d-purple rounded-2xl py-2.5 px-1 flex flex-col items-center justify-center text-white">
+                    <span class="text-[10px] uppercase font-bold tracking-wider opacity-90">Abrir</span>
+                    <span class="font-display text-xl sm:text-2xl font-bold leading-none mt-0.5">x10</span>
+                    <span class="text-[9px] opacity-80 mt-0.5">De golpe</span>
+                </button>
+
+                <button onclick="openChestBatch(30)" class="btn-3d btn-3d-orange rounded-2xl py-2.5 px-1 flex flex-col items-center justify-center text-white">
+                    <span class="text-[10px] uppercase font-bold tracking-wider opacity-90">Abrir</span>
+                    <span class="font-display text-xl sm:text-2xl font-bold leading-none mt-0.5">x30</span>
+                    <span class="text-[9px] opacity-80 mt-0.5">De golpe</span>
+                </button>
+
+                <button onclick="openChestBatch(50)" class="btn-3d btn-3d-gold rounded-2xl py-2.5 px-1 flex flex-col items-center justify-center">
+                    <span class="text-[10px] uppercase font-extrabold tracking-wider opacity-90">Abrir</span>
+                    <span class="font-display text-xl sm:text-2xl font-bold leading-none mt-0.5">x50</span>
+                    <span class="text-[9px] font-bold opacity-85 mt-0.5">¡Máximo!</span>
+                </button>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ================================================================= -->
+    <!-- POP-UP MODAL: REWARDS WON (3D ITEMS SHOWCASE)                     -->
+    <!-- ================================================================= -->
+    <div id="rewardModal" class="fixed inset-0 z-50 hidden items-center justify-center p-3 bg-black/80 backdrop-blur-md">
+        <div id="rewardModalCard" class="glass-panel w-full max-w-md rounded-3xl border-2 border-amber-400/50 shadow-2xl overflow-hidden flex flex-col max-h-[88dvh] animate-pop-in">
+            
+            <!-- Modal Header -->
+            <div id="rewardModalHeader" class="relative px-4 py-3.5 text-center bg-gradient-to-r from-amber-500/20 via-yellow-500/30 to-amber-500/20 border-b border-white/15">
+                <div id="rewardModalBadge" class="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-widest bg-amber-400 text-slate-950 mb-1">
+                    ¡Tirada Completada!
+                </div>
+                <h2 id="rewardModalTitle" class="font-display text-2xl sm:text-3xl font-bold text-white drop-shadow">
+                    ¡TESORO ENCONTRADO!
+                </h2>
+                <p id="rewardModalSubtitle" class="text-xs text-slate-300 mt-0.5">
+                    Has abierto 50 cofres de golpe
+                </p>
+                <button onclick="closeRewardModal()" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 text-slate-300 flex items-center justify-center transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Interactive 3D Hero Spotlight (Shows the rarest item won in the batch in live 3D) -->
+            <div id="rewardSpotlightSection" class="relative bg- radial from-slate-800/80 to-slate-950/90 py-3 px-4 flex flex-col items-center border-b border-white/10">
+                <div class="text-[10px] uppercase tracking-widest text-amber-300/90 font-semibold mb-1 flex items-center gap-1">
+                    <i class="fa-solid fa-cube"></i> Vista Previa 3D en Tiempo Real (Arrastra para girar)
+                </div>
+                <div class="relative w-36 h-36 sm:w-40 sm:h-40 rounded-2xl bg-black/40 border border-white/15 flex items-center justify-center shadow-inner overflow-hidden">
+                    <canvas id="spotlight3DCanvas" class="w-full h-full cursor-grab active:cursor-grabbing"></canvas>
+                    <div id="spotlightRarityTag" class="absolute bottom-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-black/70 border border-white/20">
+                        1 : 127
+                    </div>
+                </div>
+                <div id="spotlightItemName" class="font-display text-lg font-bold text-white mt-2 text-center">
+                    Gizmo (any)
+                </div>
+                <div id="spotlightItemDesc" class="text-xs text-slate-400 text-center">
+                    Artefacto Tecnológico 3D
+                </div>
+            </div>
+
+            <!-- List of all items obtained in this batch -->
+            <div class="p-3.5 overflow-y-auto flex-1 space-y-2" id="rewardItemsList">
+                <!-- Dynamically populated 3D item cards -->
+            </div>
+
+            <!-- Empty Chests Summary Footer + Repeat Button -->
+            <div class="p-3.5 bg-slate-950/80 border-t border-white/10 flex flex-col gap-2">
+                <div id="rewardEmptySummary" class="text-center text-xs text-slate-400 flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-box text-slate-500"></i>
+                    <span>Además hubo 49 cofres vacíos en esta tirada.</span>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="closeRewardModal()" class="flex-1 py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 active:scale-95 transition font-display font-bold text-sm text-slate-200 border border-white/10">
+                        Cerrar
+                    </button>
+                    <button id="btnRepeatLastBatch" onclick="repeatLastBatch()" class="flex-1 py-2.5 rounded-2xl btn-3d btn-3d-gold font-display font-bold text-sm">
+                        Repetir Tirada
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- MODAL: 3D COLLECTION & EXACT ODDS TABLE                           -->
+    <!-- ================================================================= -->
+    <div id="catalogModal" class="fixed inset-0 z-50 hidden items-center justify-center p-3 bg-black/80 backdrop-blur-md">
+        <div class="glass-panel w-full max-w-lg rounded-3xl border border-indigo-400/40 shadow-2xl overflow-hidden flex flex-col max-h-[90dvh] animate-pop-in">
+            
+            <!-- Header -->
+            <div class="px-4 py-3.5 bg-slate-900/90 border-b border-white/10 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-xl bg-indigo-500/20 border border-indigo-400/40 flex items-center justify-center text-indigo-300">
+                        <i class="fa-solid fa-cubes"></i>
+                    </div>
+                    <div>
+                        <h2 class="font-display text-lg font-bold text-white leading-none">Colección 3D y Probabilidades</h2>
+                        <p class="text-[11px] text-slate-400 mt-0.5">Toca cualquier tesoro para inspeccionar su modelo 3D</p>
+                    </div>
+                </div>
+                <button onclick="closeCatalogModal()" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-slate-200 flex items-center justify-center transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Interactive 3D Inspector inside Catalog -->
+            <div class="bg-gradient-to-b from-indigo-950/50 to-slate-950/80 p-3 border-b border-white/10 flex items-center gap-3">
+                <div class="w-28 h-28 sm:w-32 sm:h-32 rounded-2xl bg-black/50 border border-white/15 flex-shrink-0 relative overflow-hidden">
+                    <canvas id="catalog3DCanvas" class="w-full h-full cursor-grab active:cursor-grabbing"></canvas>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div id="catalogInspectTier" class="inline-block px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider mb-1 bg-amber-500/20 text-amber-300 border border-amber-400/30">
+                        Mítico
+                    </div>
+                    <h3 id="catalogInspectName" class="font-display text-base sm:text-lg font-bold text-white truncate">
+                        Weekly Gold Outfit
+                    </h3>
+                    <p id="catalogInspectSpanish" class="text-xs text-slate-300">
+                        Atuendo Dorado Semanal
+                    </p>
+                    <div class="mt-2 flex flex-wrap gap-1.5 text-[11px]">
+                        <span class="px-2 py-0.5 rounded-lg bg-white/5 border border-white/10 text-slate-300">
+                            Probabilidad base: <strong id="catalogInspectOdds" class="text-white">1 : 1,562,500</strong>
+                        </span>
+                        <span class="px-2 py-0.5 rounded-lg bg-emerald-500/15 border border-emerald-400/30 text-emerald-300">
+                            Obtenidos: <strong id="catalogInspectCount">0</strong>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- All 7 Items Odds List -->
+            <div id="catalogListContainer" class="p-3 overflow-y-auto flex-1 space-y-2">
+                <!-- Populated by JS -->
+            </div>
+
+            <!-- Footer Info & Reset -->
+            <div class="p-3 bg-slate-950/90 border-t border-white/10 flex items-center justify-between text-xs text-slate-400">
+                <span>Probabilidad de cofre vacío: <strong class="text-slate-200">~98.41%</strong></span>
+                <button onclick="resetStats()" class="px-2.5 py-1 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 transition text-[11px] font-semibold">
+                    <i class="fa-solid fa-rotate-left mr-1"></i>Reiniciar Datos
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /********************************************************************
+         * 1. EXACT DROP TABLE & GAME STATE CONFIGURATION
+         ********************************************************************/
+        const TREASURE_TABLE = [
+            {
+                id: 'gold_outfit',
+                name: 'Weekly Gold Outfit',
+                esName: 'Atuendo Dorado Semanal',
+                oddsOneIn: 1562500,
+                tier: 'MÍTICO SUPREMO',
+                color: '#ffd700',
+                hex: 0xffd700,
+                bgBadge: 'rgba(255, 215, 0, 0.2)',
+                rank: 7
+            },
+            {
+                id: 'pirate_shop',
+                name: 'Pirate Shop Access',
+                esName: 'Pase a la Tienda Pirata',
+                oddsOneIn: 137500,
+                tier: 'EXÓTICO PIRATA',
+                color: '#ff2a55',
+                hex: 0xff2a55,
+                bgBadge: 'rgba(255, 42, 85, 0.2)',
+                rank: 6
+            },
+            {
+                id: 'vehicle_decal',
+                name: 'Weekly Vehicle & Decal',
+                esName: 'Vehículo y Calcomanía Semanal',
+                oddsOneIn: 7813,
+                tier: 'LEGENDARIO',
+                color: '#ff8c00',
+                hex: 0xff8c00,
+                bgBadge: 'rgba(255, 140, 0, 0.2)',
+                rank: 5
+            },
+            {
+                id: 'pickaxe_backbling',
+                name: 'Weekly Pickaxe or Backbling',
+                esName: 'Pico o Mochila Semanal',
+                oddsOneIn: 568,
+                tier: 'ÉPICO',
+                color: '#b026ff',
+                hex: 0xb026ff,
+                bgBadge: 'rgba(176, 38, 255, 0.2)',
+                rank: 4
+            },
+            {
+                id: 'jam_track',
+                name: 'Weekly Jam Track',
+                esName: 'Pista de Improvisación (Jam Track)',
+                oddsOneIn: 391,
+                tier: 'RARO',
+                color: '#00d2ff',
+                hex: 0x00d2ff,
+                bgBadge: 'rgba(0, 210, 255, 0.2)',
+                rank: 3
+            },
+            {
+                id: 'loading_screen',
+                name: 'Weekly Loading Screen',
+                esName: 'Pantalla de Carga Semanal',
+                oddsOneIn: 272,
+                tier: 'POCO COMÚN',
+                color: '#2ecc71',
+                hex: 0x2ecc71,
+                bgBadge: 'rgba(46, 204, 113, 0.2)',
+                rank: 2
+            },
+            {
+                id: 'gizmo',
+                name: 'Gizmo (any)',
+                esName: 'Artilugio Gizmo (Cualquiera)',
+                oddsOneIn: 127,
+                tier: 'ESPECIAL GIZMO',
+                color: '#00ffcc',
+                hex: 0x00ffcc,
+                bgBadge: 'rgba(0, 255, 204, 0.2)',
+                rank: 1
+            }
+        ];
+
+        // Luck Multiplier presets so the player can play with 1x real odds or test rare drops
+        const LUCK_MODES = [
+            { mult: 1, label: '1x (Real)' },
+            { mult: 10, label: '10x Suerte' },
+            { mult: 100, label: '100x Turbo' },
+            { mult: 10000, label: '10,000x Loco' }
+        ];
+
+        let state = {
+            totalChests: 0,
+            totalHits: 0,
+            inventory: {
+                gold_outfit: 0,
+                pirate_shop: 0,
+                vehicle_decal: 0,
+                pickaxe_backbling: 0,
+                jam_track: 0,
+                loading_screen: 0,
+                gizmo: 0
+            },
+            bestRankFound: 0,
+            luckModeIndex: 0,
+            lastBatchSize: 10,
+            soundEnabled: true
+        };
+
+        // Load saved progress if available
+        try {
+            const saved = localStorage.getItem('chestSim3DState_v1');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                state = { ...state, ...parsed, inventory: { ...state.inventory, ...(parsed.inventory || {}) } };
+            }
+        } catch (e) {
+            console.warn('Storage restricted');
+        }
+
+        function saveState() {
+            try {
+                localStorage.setItem('chestSim3DState_v1', JSON.stringify(state));
+            } catch (e) {}
+        }
+
+        /********************************************************************
+         * 2. PROCEDURAL WEB AUDIO SYNTHESIZER (NO EXTERNAL ASSETS NEEDED)
+         ********************************************************************/
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                if (AudioContextClass) audioCtx = new AudioContextClass();
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playSound(type, rank = 0) {
+            if (!state.soundEnabled) return;
+            initAudio();
+            if (!audioCtx) return;
+
+            const now = audioCtx.currentTime;
+
+            if (type === 'shake') {
+                // Quick wood/metal rattle
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(130, now);
+                osc.frequency.exponentialRampToValueAtTime(65, now + 0.09);
+                gain.gain.setValueAtTime(0.18, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.09);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.09);
+            } else if (type === 'empty') {
+                // Dusty low thud
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(110, now);
+                osc.frequency.exponentialRampToValueAtTime(42, now + 0.18);
+                gain.gain.setValueAtTime(0.22, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.18);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.18);
+            } else if (type === 'win') {
+                // Celebratory chord arpeggio scaled by rarity rank (1..7)
+                const baseFreq = 261.63 * (1 + rank * 0.12);
+                const notes = rank >= 4 ? [1, 1.25, 1.5, 2, 2.5] : [1, 1.25, 1.5, 2];
+                notes.forEach((mult, idx) => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = rank >= 5 ? 'sawtooth' : 'triangle';
+                    const startTime = now + idx * 0.065;
+                    osc.frequency.setValueAtTime(baseFreq * mult, startTime);
+                    gain.gain.setValueAtTime(0.16, startTime);
+                    gain.gain.exponentialRampToValueAtTime(0.008, startTime + 0.45);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(startTime);
+                    osc.stop(startTime + 0.45);
+                });
+            }
+        }
+
+        /********************************************************************
+         * 3. 3D ITEM MODEL GENERATOR (THREE.JS PROCEDURAL 3D MESHES)
+         * Builds distinct 3D models for each of the 7 rewards + Empty Chest
+         ********************************************************************/
+        function createTreasure3DMesh(itemId) {
+            const group = new THREE.Group();
+
+            switch (itemId) {
+                case 'gold_outfit': {
+                    // 1:1,562,500 - Mythic Golden Royal Armor & Crown Trophy
+                    const goldMat = new THREE.MeshStandardMaterial({
+                        color: 0xffd700,
+                        metalness: 0.85,
+                        roughness: 0.18,
+                        emissive: 0x553300,
+                        emissiveIntensity: 0.4
+                    });
+                    const gemMat = new THREE.MeshStandardMaterial({
+                        color: 0xff1155,
+                        metalness: 0.2,
+                        roughness: 0.1,
+                        emissive: 0xff0044,
+                        emissiveIntensity: 0.7
+                    });
+
+                    // Armor Torso
+                    const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.42, 1.1, 8), goldMat);
+                    torso.position.y = -0.25;
+                    group.add(torso);
+
+                    // Pauldrons (Shoulders)
+                    const leftPad = new THREE.Mesh(new THREE.SphereGeometry(0.38, 16, 16), goldMat);
+                    leftPad.position.set(-0.68, 0.18, 0);
+                    leftPad.scale.set(1, 0.7, 1);
+                    group.add(leftPad);
+
+                    const rightPad = leftPad.clone();
+                    rightPad.position.x = 0.68;
+                    group.add(rightPad);
+
+                    // Floating Golden Crown / Helmet
+                    const crownBase = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.36, 0.35, 8), goldMat);
+                    crownBase.position.y = 0.68;
+                    group.add(crownBase);
+
+                    // Crown spikes
+                    for (let i = 0; i < 6; i++) {
+                        const angle = (i / 6) * Math.PI * 2;
+                        const spike = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.28, 4), goldMat);
+                        spike.position.set(Math.cos(angle) * 0.36, 0.95, Math.sin(angle) * 0.36);
+                        group.add(spike);
+                    }
+
+                    // Chest Emblem Gem
+                    const chestGem = new THREE.Mesh(new THREE.OctahedronGeometry(0.24, 0), gemMat);
+                    chestGem.position.set(0, -0.15, 0.55);
+                    group.add(chestGem);
+
+                    // Halo Ring behind armor
+                    const halo = new THREE.Mesh(
+                        new THREE.TorusGeometry(1.05, 0.04, 12, 36),
+                        new THREE.MeshBasicMaterial({ color: 0xffe600 })
+                    );
+                    halo.position.z = -0.2;
+                    group.add(halo);
+                    break;
+                }
+
+                case 'pirate_shop': {
+                    // 1:137,500 - Exotic Crimson Pirate Skull Medallion & Crossed Cutlasses
+                    const coinMat = new THREE.MeshStandardMaterial({
+                        color: 0xff2a55,
+                        metalness: 0.75,
+                        roughness: 0.2,
+                        emissive: 0x440011,
+                        emissiveIntensity: 0.4
+                    });
+                    const rimMat = new THREE.MeshStandardMaterial({
+                        color: 0xffb703,
+                        metalness: 0.85,
+                        roughness: 0.2
+                    });
+                    const boneMat = new THREE.MeshStandardMaterial({
+                        color: 0xf8fafc,
+                        roughness: 0.35,
+                        metalness: 0.1
+                    });
+
+                    // Medallion Disc
+                    const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.18, 24), coinMat);
+                    disc.rotation.x = Math.PI / 2;
+                    group.add(disc);
+
+                    // Gold Outer Rim
+                    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.9, 0.1, 16, 32), rimMat);
+                    group.add(rim);
+
+                    // 3D Skull Crania on Front
+                    const skull = new THREE.Mesh(new THREE.SphereGeometry(0.42, 16, 16), boneMat);
+                    skull.position.set(0, 0.08, 0.15);
+                    group.add(skull);
+
+                    const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.25, 0.3), boneMat);
+                    jaw.position.set(0, -0.25, 0.18);
+                    group.add(jaw);
+
+                    // Glowing Crimson Eyes
+                    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0033 });
+                    const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 10), eyeMat);
+                    eyeL.position.set(-0.15, 0.1, 0.52);
+                    const eyeR = eyeL.clone();
+                    eyeR.position.x = 0.15;
+                    group.add(eyeL, eyeR);
+
+                    // Crossed Swords behind medallion
+                    for (let dir of [-1, 1]) {
+                        const blade = new THREE.Mesh(new THREE.BoxGeometry(0.14, 2.3, 0.05), rimMat);
+                        blade.rotation.z = dir * (Math.PI / 4);
+                        blade.position.z = -0.12;
+                        group.add(blade);
+                    }
+                    break;
+                }
+
+                case 'vehicle_decal': {
+                    // 1:7,813 - Legendary 3D Sports Car with Racing Decal
+                    const bodyMat = new THREE.MeshStandardMaterial({
+                        color: 0xff7b00,
+                        metalness: 0.65,
+                        roughness: 0.2
+                    });
+                    const stripeMat = new THREE.MeshStandardMaterial({
+                        color: 0xffffff,
+                        emissive: 0xffae00,
+                        emissiveIntensity: 0.3
+                    });
+                    const glassMat = new THREE.MeshStandardMaterial({
+                        color: 0x111827,
+                        metalness: 0.9,
+                        roughness: 0.1
+                    });
+                    const wheelMat = new THREE.MeshStandardMaterial({
+                        color: 0x1f2937,
+                        roughness: 0.6
+                    });
+
+                    // Lower Chassis
+                    const chassis = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.4, 0.92), bodyMat);
+                    chassis.position.y = -0.15;
+                    group.add(chassis);
+
+                    // Decal Stripe
+                    const stripe = new THREE.Mesh(new THREE.BoxGeometry(1.77, 0.42, 0.22), stripeMat);
+                    stripe.position.y = -0.15;
+                    group.add(stripe);
+
+                    // Cabin
+                    const cabin = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.36, 0.76), glassMat);
+                    cabin.position.set(-0.1, 0.2, 0);
+                    group.add(cabin);
+
+                    // Rear Spoiler
+                    const spoilerWing = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.06, 0.96), stripeMat);
+                    spoilerWing.position.set(-0.78, 0.25, 0);
+                    group.add(spoilerWing);
+
+                    // 4 Wheels
+                    const wheelCoords = [
+                        [-0.55, -0.35, 0.48],
+                        [0.55, -0.35, 0.48],
+                        [-0.55, -0.35, -0.48],
+                        [0.55, -0.35, -0.48]
+                    ];
+                    wheelCoords.forEach(([x, y, z]) => {
+                        const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.18, 16), wheelMat);
+                        wheel.rotation.x = Math.PI / 2;
+                        wheel.position.set(x, y, z);
+                        group.add(wheel);
+                    });
+                    break;
+                }
+
+                case 'pickaxe_backbling': {
+                    // 1:568 - Epic Glowing Crystal Pickaxe
+                    const handleMat = new THREE.MeshStandardMaterial({
+                        color: 0x475569,
+                        metalness: 0.7,
+                        roughness: 0.3
+                    });
+                    const crystalMat = new THREE.MeshStandardMaterial({
+                        color: 0xb026ff,
+                        metalness: 0.3,
+                        roughness: 0.15,
+                        emissive: 0x7e22ce,
+                        emissiveIntensity: 0.65
+                    });
+
+                    // Shaft
+                    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 1.9, 12), handleMat);
+                    group.add(shaft);
+
+                    // Crystal Pickaxe Blades
+                    const leftBlade = new THREE.Mesh(new THREE.ConeGeometry(0.26, 0.85, 6), crystalMat);
+                    leftBlade.rotation.z = Math.PI / 2 + 0.2;
+                    leftBlade.position.set(-0.42, 0.62, 0);
+                    group.add(leftBlade);
+
+                    const rightBlade = new THREE.Mesh(new THREE.ConeGeometry(0.26, 0.85, 6), crystalMat);
+                    rightBlade.rotation.z = -Math.PI / 2 - 0.2;
+                    rightBlade.position.set(0.42, 0.62, 0);
+                    group.add(rightBlade);
+
+                    // Top Fin
+                    const topGem = new THREE.Mesh(new THREE.OctahedronGeometry(0.24, 0), crystalMat);
+                    topGem.position.set(0, 0.95, 0);
+                    group.add(topGem);
+
+                    group.rotation.z = -Math.PI / 6;
+                    break;
+                }
+
+                case 'jam_track': {
+                    // 1:391 - Rare 3D Vinyl Record Disc with Neon Equalizer Aura
+                    const vinylMat = new THREE.MeshStandardMaterial({
+                        color: 0x0f172a,
+                        metalness: 0.8,
+                        roughness: 0.15
+                    });
+                    const labelMat = new THREE.MeshStandardMaterial({
+                        color: 0x00d2ff,
+                        emissive: 0x0088cc,
+                        emissiveIntensity: 0.6
+                    });
+
+                    const disc = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 0.08, 32), vinylMat);
+                    disc.rotation.x = Math.PI / 2;
+                    group.add(disc);
+
+                    const centerLabel = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.38, 0.1, 24), labelMat);
+                    centerLabel.rotation.x = Math.PI / 2;
+                    group.add(centerLabel);
+
+                    // Glowing Grooves
+                    const groove1 = new THREE.Mesh(
+                        new THREE.TorusGeometry(0.65, 0.025, 12, 36),
+                        new THREE.MeshBasicMaterial({ color: 0x00d2ff })
+                    );
+                    groove1.position.z = 0.05;
+                    const groove2 = groove1.clone();
+                    groove2.position.z = -0.05;
+                    group.add(groove1, groove2);
+                    break;
+                }
+
+                case 'loading_screen': {
+                    // 1:272 - Uncommon 3D Holographic Landscape Frame
+                    const frameMat = new THREE.MeshStandardMaterial({
+                        color: 0x2ecc71,
+                        metalness: 0.7,
+                        roughness: 0.2,
+                        emissive: 0x0f5132,
+                        emissiveIntensity: 0.4
+                    });
+                    const screenMat = new THREE.MeshStandardMaterial({
+                        color: 0x064e3b,
+                        emissive: 0x10b981,
+                        emissiveIntensity: 0.35
+                    });
+
+                    // Monitor / Art Frame
+                    const board = new THREE.Mesh(new THREE.BoxGeometry(1.55, 1.05, 0.12), frameMat);
+                    group.add(board);
+
+                    const canvasInner = new THREE.Mesh(new THREE.BoxGeometry(1.38, 0.88, 0.14), screenMat);
+                    group.add(canvasInner);
+
+                    // 3D Low-poly Mountains & Sun popping out of the screen
+                    const sun = new THREE.Mesh(
+                        new THREE.SphereGeometry(0.2, 16, 16),
+                        new THREE.MeshBasicMaterial({ color: 0xfde047 })
+                    );
+                    sun.position.set(0.3, 0.18, 0.12);
+                    group.add(sun);
+
+                    const mountain1 = new THREE.Mesh(
+                        new THREE.ConeGeometry(0.35, 0.55, 4),
+                        new THREE.MeshStandardMaterial({ color: 0x34d399 })
+                    );
+                    mountain1.position.set(-0.25, -0.15, 0.15);
+                    group.add(mountain1);
+                    break;
+                }
+
+                case 'gizmo':
+                default: {
+                    // 1:127 - Gizmo (any): Sci-Fi Floating Gyroscope Core Cube
+                    const coreMat = new THREE.MeshStandardMaterial({
+                        color: 0x00ffcc,
+                        emissive: 0x00b38f,
+                        emissiveIntensity: 0.7,
+                        metalness: 0.4,
+                        roughness: 0.1
+                    });
+                    const ringMat = new THREE.MeshStandardMaterial({
+                        color: 0x94a3b8,
+                        metalness: 0.85,
+                        roughness: 0.2
+                    });
+
+                    const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.48, 0), coreMat);
+                    group.add(core);
+
+                    const ring1 = new THREE.Mesh(new THREE.TorusGeometry(0.78, 0.06, 12, 32), ringMat);
+                    ring1.rotation.x = Math.PI / 3;
+                    group.add(ring1);
+
+                    const ring2 = new THREE.Mesh(new THREE.TorusGeometry(0.95, 0.05, 12, 32), coreMat);
+                    ring2.rotation.y = Math.PI / 3;
+                    group.add(ring2);
+                    break;
+                }
+            }
+
+            return group;
+        }
+
+        /********************************************************************
+         * 4. MAIN 3D CHEST VIEWPORT (THREE.JS SCENE)
+         ********************************************************************/
+        let mainScene, mainCamera, mainRenderer;
+        let chestGroup, chestLidPivot, chestLockMesh, chestInnerGlowLight;
+        let particlesGroup = new THREE.Group();
+        let burstParticles = [];
+        let floatingItemPreview = null;
+
+        // Animation states for the chest
+        let chestAnim = {
+            state: 'idle', // 'idle' | 'shaking' | 'opening' | 'open_hold'
+            timer: 0,
+            lidAngle: 0,
+            targetLidAngle: 0,
+            shakeIntensity: 0,
+            burstColor: 0xffd700,
+            userRotY: 0,
+            userRotX: 0.15,
+            isDragging: false,
+            prevX: 0,
+            prevY: 0
+        };
+
+        function initMain3DScene() {
+            const container = document.getElementById('canvasContainer');
+            const width = container.clientWidth || window.innerWidth;
+            const height = container.clientHeight || window.innerHeight;
+
+            mainScene = new THREE.Scene();
+
+            mainCamera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
+            mainCamera.position.set(0, 2.2, 6.8);
+            mainCamera.lookAt(0, 0.2, 0);
+
+            mainRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            mainRenderer.setSize(width, height);
+            mainRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(mainRenderer.domElement);
+
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+            mainScene.add(ambientLight);
+
+            const keyLight = new THREE.DirectionalLight(0xfff4d6, 1.25);
+            keyLight.position.set(4, 8, 6);
+            mainScene.add(keyLight);
+
+            const rimLight = new THREE.DirectionalLight(0x6366f1, 0.9);
+            rimLight.position.set(-5, 3, -5);
+            mainScene.add(rimLight);
+
+            // Build the 3D Treasure Chest & Pedestal
+            chestGroup = new THREE.Group();
+            mainScene.add(chestGroup);
+
+            // Pedestal Platform
+            const pedestalGeo = new THREE.CylinderGeometry(2.1, 2.4, 0.35, 24);
+            const pedestalMat = new THREE.MeshStandardMaterial({
+                color: 0x1e293b,
+                metalness: 0.6,
+                roughness: 0.35
+            });
+            const pedestal = new THREE.Mesh(pedestalGeo, pedestalMat);
+            pedestal.position.y = -1.15;
+            chestGroup.add(pedestal);
+
+            // Glowing Rune Ring on Pedestal
+            const runeRing = new THREE.Mesh(
+                new THREE.TorusGeometry(1.95, 0.045, 12, 48),
+                new THREE.MeshBasicMaterial({ color: 0x38bdf8 })
+            );
+            runeRing.rotation.x = Math.PI / 2;
+            runeRing.position.y = -0.96;
+            chestGroup.add(runeRing);
+            chestGroup.userData.runeRing = runeRing;
+
+            // Chest Materials
+            const woodMat = new THREE.MeshStandardMaterial({
+                color: 0x854d0e,
+                roughness: 0.55,
+                metalness: 0.15
+            });
+            const goldBandMat = new THREE.MeshStandardMaterial({
+                color: 0xfacc15,
+                metalness: 0.85,
+                roughness: 0.2
+            });
+            const innerGlowMat = new THREE.MeshBasicMaterial({
+                color: 0xffd700
+            });
+
+            // Chest Base Box
+            const baseBox = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.25, 1.65), woodMat);
+            baseBox.position.y = -0.35;
+            chestGroup.add(baseBox);
+
+            // Gold Corner Pillars on Base
+            const bandOffsets = [-1.12, 1.12];
+            bandOffsets.forEach(xPos => {
+                const strap = new THREE.Mesh(new THREE.BoxGeometry(0.22, 1.28, 1.72), goldBandMat);
+                strap.position.set(xPos, -0.35, 0);
+                chestGroup.add(strap);
+            });
+
+            // Glowing Core Plane Inside Chest
+            const innerCore = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.15, 1.45), innerGlowMat);
+            innerCore.position.y = 0.22;
+            chestGroup.add(innerCore);
+            chestGroup.userData.innerCore = innerCore;
+
+            // Point Light inside chest
+            chestInnerGlowLight = new THREE.PointLight(0xffd700, 0.4, 6);
+            chestInnerGlowLight.position.set(0, 0.6, 0);
+            chestGroup.add(chestInnerGlowLight);
+
+            // Hinged Lid Pivot (placed at back top edge of base)
+            chestLidPivot = new THREE.Group();
+            chestLidPivot.position.set(0, 0.27, -0.82);
+            chestGroup.add(chestLidPivot);
+
+            // Lid Box + Rounded Top
+            const lidBox = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.45, 1.65), woodMat);
+            lidBox.position.set(0, 0.22, 0.82);
+            chestLidPivot.add(lidBox);
+
+            const lidArch = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.82, 0.82, 2.38, 16, 1, false, 0, Math.PI),
+                woodMat
+            );
+            lidArch.rotation.z = Math.PI / 2;
+            lidArch.position.set(0, 0.42, 0.82);
+            chestLidPivot.add(lidArch);
+
+            // Gold Straps on Lid
+            bandOffsets.forEach(xPos => {
+                const lidStrap = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.65, 1.72), goldBandMat);
+                lidStrap.position.set(xPos, 0.32, 0.82);
+                chestLidPivot.add(lidStrap);
+            });
+
+            // Front Lock Plate
+            chestLockMesh = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.58, 0.22), goldBandMat);
+            chestLockMesh.position.set(0, 0.08, 1.66);
+            chestLidPivot.add(chestLockMesh);
+
+            // Particles Group
+            mainScene.add(particlesGroup);
+
+            // Pointer / Touch Drag Rotation for Chest
+            const domElem = mainRenderer.domElement;
+            domElem.addEventListener('pointerdown', (e) => {
+                chestAnim.isDragging = true;
+                chestAnim.prevX = e.clientX;
+                chestAnim.prevY = e.clientY;
+            });
+            window.addEventListener('pointermove', (e) => {
+                if (!chestAnim.isDragging) return;
+                const dx = e.clientX - chestAnim.prevX;
+                const dy = e.clientY - chestAnim.prevY;
+                chestAnim.userRotY += dx * 0.008;
+                chestAnim.userRotX = Math.max(-0.25, Math.min(0.6, chestAnim.userRotX + dy * 0.005));
+                chestAnim.prevX = e.clientX;
+                chestAnim.prevY = e.clientY;
+            });
+            window.addEventListener('pointerup', () => {
+                chestAnim.isDragging = false;
+            });
+
+            window.addEventListener('resize', onMainResize);
+        }
+
+        function onMainResize() {
+            if (!mainRenderer || !mainCamera) return;
+            const container = document.getElementById('canvasContainer');
+            const w = container.clientWidth || window.innerWidth;
+            const h = container.clientHeight || window.innerHeight;
+            mainCamera.aspect = w / h;
+            mainCamera.updateProjectionMatrix();
+            mainRenderer.setSize(w, h);
+        }
+
+        // Spawn 3D Burst Confetti / Dust Particles from the Chest
+        function spawnChestBurstParticles(colorHex, count = 40, isDust = false) {
+            // Clear old particles
+            while (particlesGroup.children.length > 0) {
+                particlesGroup.remove(particlesGroup.children[0]);
+            }
+            burstParticles = [];
+
+            const geo = isDust
+                ? new THREE.DodecahedronGeometry(0.11, 0)
+                : new THREE.OctahedronGeometry(0.14, 0);
+
+            for (let i = 0; i < count; i++) {
+                const mat = new THREE.MeshBasicMaterial({
+                    color: isDust ? 0x94a3b8 : colorHex,
+                    transparent: true,
+                    opacity: 1
+                });
+                const mesh = new THREE.Mesh(geo, mat);
+                mesh.position.set(
+                    (Math.random() - 0.5) * 1.4,
+                    0.35,
+                    (Math.random() - 0.5) * 0.9
+                );
+                const speed = isDust ? 0.06 + Math.random() * 0.08 : 0.11 + Math.random() * 0.18;
+                const angle = Math.random() * Math.PI * 2;
+                burstParticles.push({
+                    mesh,
+                    vx: Math.cos(angle) * speed,
+                    vy: (isDust ? 0.06 : 0.14) + Math.random() * 0.16,
+                    vz: Math.sin(angle) * speed,
+                    life: 1.0,
+                    decay: isDust ? 0.03 : 0.018
+                });
+                particlesGroup.add(mesh);
+            }
+        }
+
+        // Show 3D model emerging above the main chest on a hit
+        function setFloatingChestItem(itemId) {
+            if (floatingItemPreview) {
+                chestGroup.remove(floatingItemPreview);
+                floatingItemPreview = null;
+            }
+            if (!itemId) return;
+            floatingItemPreview = createTreasure3DMesh(itemId);
+            floatingItemPreview.scale.set(0.75, 0.75, 0.75);
+            floatingItemPreview.position.set(0, 1.55, 0);
+            chestGroup.add(floatingItemPreview);
+        }
+
+        /********************************************************************
+         * 5. SECONDARY 3D VIEWPORTS (REWARD MODAL & CATALOG INSPECTOR)
+         ********************************************************************/
+        let spotlightScene, spotlightCamera, spotlightRenderer, spotlightMesh;
+        let catalogScene, catalogCamera, catalogRenderer, catalogMesh;
+        let spotlightRotY = 0;
+        let catalogRotY = 0;
+
+        function initSecondary3DViewports() {
+            // 1. Reward Modal 3D Spotlight
+            const spotCanvas = document.getElementById('spotlight3DCanvas');
+            spotlightScene = new THREE.Scene();
+            spotlightCamera = new THREE.PerspectiveCamera(42, 1, 0.1, 50);
+            spotlightCamera.position.set(0, 0.3, 3.3);
+            spotlightCamera.lookAt(0, 0, 0);
+
+            spotlightRenderer = new THREE.WebGLRenderer({ canvas: spotCanvas, antialias: true, alpha: true });
+            spotlightRenderer.setSize(160, 160);
+            spotlightRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+            spotlightScene.add(new THREE.AmbientLight(0xffffff, 0.8));
+            const spotDir = new THREE.DirectionalLight(0xffffff, 1.3);
+            spotDir.position.set(3, 5, 4);
+            spotlightScene.add(spotDir);
+
+            // Drag rotation on spotlight canvas
+            let spotDrag = false, spotPrevX = 0;
+            spotCanvas.addEventListener('pointerdown', e => { spotDrag = true; spotPrevX = e.clientX; });
+            window.addEventListener('pointermove', e => {
+                if (!spotDrag) return;
+                spotlightRotY += (e.clientX - spotPrevX) * 0.015;
+                spotPrevX = e.clientX;
+            });
+            window.addEventListener('pointerup', () => { spotDrag = false; });
+
+            // 2. Catalog Modal 3D Inspector
+            const catCanvas = document.getElementById('catalog3DCanvas');
+            catalogScene = new THREE.Scene();
+            catalogCamera = new THREE.PerspectiveCamera(42, 1, 0.1, 50);
+            catalogCamera.position.set(0, 0.3, 3.3);
+            catalogCamera.lookAt(0, 0, 0);
+
+            catalogRenderer = new THREE.WebGLRenderer({ canvas: catCanvas, antialias: true, alpha: true });
+            catalogRenderer.setSize(130, 130);
+            catalogRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+            catalogScene.add(new THREE.AmbientLight(0xffffff, 0.85));
+            const catDir = new THREE.DirectionalLight(0xffffff, 1.3);
+            catDir.position.set(3, 5, 4);
+            catalogScene.add(catDir);
+
+            let catDrag = false, catPrevX = 0;
+            catCanvas.addEventListener('pointerdown', e => { catDrag = true; catPrevX = e.clientX; });
+            window.addEventListener('pointermove', e => {
+                if (!catDrag) return;
+                catalogRotY += (e.clientX - catPrevX) * 0.015;
+                catPrevX = e.clientX;
+            });
+            window.addEventListener('pointerup', () => { catDrag = false; });
+        }
+
+        function setSpotlight3DItem(itemId) {
+            if (spotlightMesh) spotlightScene.remove(spotlightMesh);
+            spotlightMesh = createTreasure3DMesh(itemId);
+            spotlightScene.add(spotlightMesh);
+        }
+
+        function setCatalog3DItem(itemId) {
+            if (catalogMesh) catalogScene.remove(catalogMesh);
+            catalogMesh = createTreasure3DMesh(itemId);
+            catalogScene.add(catalogMesh);
+        }
+
+        /********************************************************************
+         * 6. MASTER ANIMATION LOOP
+         ********************************************************************/
+        let clock = new THREE.Clock();
+
+        function animateLoop() {
+            requestAnimationFrame(animateLoop);
+            const elapsed = clock.getElapsedTime();
+
+            // 1. Update Main Chest 3D Scene
+            if (chestGroup) {
+                // Gentle floating hover
+                const baseHoverY = Math.sin(elapsed * 2.4) * 0.08;
+
+                // Handle chest animation state
+                if (chestAnim.state === 'shaking') {
+                    chestAnim.timer -= 0.016;
+                    const shakeOffset = (Math.random() - 0.5) * chestAnim.shakeIntensity;
+                    chestGroup.position.set(shakeOffset, baseHoverY + Math.abs(shakeOffset) * 0.5, 0);
+                    chestGroup.rotation.z = (Math.random() - 0.5) * 0.14;
+                } else {
+                    chestGroup.position.x *= 0.8;
+                    chestGroup.position.y = baseHoverY;
+                    chestGroup.rotation.z *= 0.8;
+                }
+
+                // Smooth lid opening/closing
+                chestAnim.lidAngle += (chestAnim.targetLidAngle - chestAnim.lidAngle) * 0.18;
+                chestLidPivot.rotation.x = chestAnim.lidAngle;
+
+                // Auto return lid to closed after short hold if empty
+                if (chestAnim.state === 'open_empty' && elapsed - chestAnim.openTimestamp > 0.45) {
+                    chestAnim.targetLidAngle = 0;
+                    chestAnim.state = 'idle';
+                }
+
+                // Apply user drag rotation + subtle idle sway
+                if (!chestAnim.isDragging && chestAnim.state === 'idle') {
+                    chestAnim.userRotY += 0.0035;
+                }
+                chestGroup.rotation.y = chestAnim.userRotY;
+                chestGroup.rotation.x = chestAnim.userRotX;
+
+                // Rotate floating 3D reward above chest if active
+                if (floatingItemPreview) {
+                    floatingItemPreview.rotation.y = elapsed * 1.8;
+                    floatingItemPreview.position.y = 1.45 + Math.sin(elapsed * 3.5) * 0.12;
+                }
+
+                // Update burst particles
+                for (let i = burstParticles.length - 1; i >= 0; i--) {
+                    const p = burstParticles[i];
+                    p.mesh.position.x += p.vx;
+                    p.mesh.position.y += p.vy;
+                    p.mesh.position.z += p.vz;
+                    p.vy -= 0.006; // gravity
+                    p.mesh.rotation.x += 0.1;
+                    p.mesh.rotation.y += 0.12;
+                    p.life -= p.decay;
+                    p.mesh.material.opacity = Math.max(0, p.life);
+                    if (p.life <= 0) {
+                        particlesGroup.remove(p.mesh);
+                        burstParticles.splice(i, 1);
+                    }
+                }
+
+                mainRenderer.render(mainScene, mainCamera);
+            }
+
+            // 2. Render Reward Modal 3D Spotlight if visible
+            const rewardModal = document.getElementById('rewardModal');
+            if (rewardModal && !rewardModal.classList.contains('hidden') && spotlightMesh) {
+                spotlightRotY += 0.02;
+                spotlightMesh.rotation.y = spotlightRotY;
+                spotlightMesh.rotation.x = Math.sin(elapsed * 2) * 0.15;
+                spotlightRenderer.render(spotlightScene, spotlightCamera);
+            }
+
+            // 3. Render Catalog Modal 3D Inspector if visible
+            const catalogModal = document.getElementById('catalogModal');
+            if (catalogModal && !catalogModal.classList.contains('hidden') && catalogMesh) {
+                catalogRotY += 0.018;
+                catalogMesh.rotation.y = catalogRotY;
+                catalogMesh.rotation.x = Math.sin(elapsed * 1.8) * 0.14;
+                catalogRenderer.render(catalogScene, catalogCamera);
+            }
+        }
+
+        /********************************************************************
+         * 7. CORE CHEST ROLLING LOGIC ("ABRIR DE GOLPE" 1x, 10x, 30x, 50x)
+         ********************************************************************/
+        let isRollingBatch = false;
+
+        function rollSingleChest(luckMult) {
+            // Roll from rarest (1:1,562,500) to most common (1:127)
+            for (let i = 0; i < TREASURE_TABLE.length; i++) {
+                const item = TREASURE_TABLE[i];
+                const chance = Math.min(0.95, luckMult / item.oddsOneIn);
+                if (Math.random() < chance) {
+                    return item;
+                }
+            }
+            return null; // Empty chest (~98.41% on 1x Real Odds)
+        }
+
+        function openChestBatch(count) {
+            if (isRollingBatch) return;
+            isRollingBatch = true;
+            state.lastBatchSize = count;
+
+            const luckMult = LUCK_MODES[state.luckModeIndex].mult;
+
+            // Play chest rattle sound & start brief violent shake before instant burst
+            playSound('shake');
+            chestAnim.state = 'shaking';
+            chestAnim.shakeIntensity = count >= 30 ? 0.26 : 0.16;
+            chestAnim.targetLidAngle = 0;
+            setFloatingChestItem(null);
+
+            // Roll all 'count' chests at once
+            const wonCounts = {};
+            let emptyCount = 0;
+            let bestItemInBatch = null;
+            let totalWonInBatch = 0;
+
+            for (let c = 0; c < count; c++) {
+                const result = rollSingleChest(luckMult);
+                if (result) {
+                    wonCounts[result.id] = (wonCounts[result.id] || 0) + 1;
+                    state.inventory[result.id] = (state.inventory[result.id] || 0) + 1;
+                    state.totalHits++;
+                    totalWonInBatch++;
+
+                    if (!bestItemInBatch || result.rank > bestItemInBatch.rank) {
+                        bestItemInBatch = result;
+                    }
+                    if (result.rank > state.bestRankFound) {
+                        state.bestRankFound = result.rank;
+                    }
+                } else {
+                    emptyCount++;
+                }
+            }
+
+            state.totalChests += count;
+            saveState();
+            updateHUD();
+
+            // After a snappy 160ms shake, burst open all at once!
+            setTimeout(() => {
+                isRollingBatch = false;
+                chestAnim.openTimestamp = clock.getElapsedTime();
+
+                if (bestItemInBatch) {
+                    // WINNER BATCH!
+                    chestAnim.state = 'open_hold';
+                    chestAnim.targetLidAngle = -Math.PI * 0.62;
+                    chestInnerGlowLight.color.setHex(bestItemInBatch.hex);
+                    chestInnerGlowLight.intensity = 2.6;
+                    chestGroup.userData.innerCore.material.color.setHex(bestItemInBatch.hex);
+                    chestGroup.userData.runeRing.material.color.setHex(bestItemInBatch.hex);
+
+                    spawnChestBurstParticles(bestItemInBatch.hex, 55, false);
+                    setFloatingChestItem(bestItemInBatch.id);
+                    triggerScreenFlash(bestItemInBatch.color);
+                    playSound('win', bestItemInBatch.rank);
+
+                    showRewardModal(count, wonCounts, emptyCount, bestItemInBatch, totalWonInBatch);
+                } else {
+                    // ALL CHESTS WERE EMPTY
+                    chestAnim.state = 'open_empty';
+                    chestAnim.targetLidAngle = -Math.PI * 0.42;
+                    chestInnerGlowLight.color.setHex(0x64748b);
+                    chestInnerGlowLight.intensity = 0.5;
+                    chestGroup.userData.innerCore.material.color.setHex(0x475569);
+                    chestGroup.userData.runeRing.material.color.setHex(0x38bdf8);
+
+                    spawnChestBurstParticles(0x94a3b8, 22, true);
+                    playSound('empty');
+
+                    const forcePopupOnEmpty = document.getElementById('chkPopupOnEmpty').checked;
+                    if (forcePopupOnEmpty) {
+                        showRewardModal(count, {}, emptyCount, null, 0);
+                    } else {
+                        showEmptyRollToast(count);
+                    }
+                }
+            }, 160);
+        }
+
+        function repeatLastBatch() {
+            closeRewardModal();
+            openChestBatch(state.lastBatchSize || 10);
+        }
+
+        /********************************************************************
+         * 8. UI UPDATES, TOASTS & POP-UP MODALS
+         ********************************************************************/
+        function updateHUD() {
+            document.getElementById('statTotalChests').textContent = state.totalChests.toLocaleString('es-ES');
+            document.getElementById('statTotalHits').textContent = state.totalHits.toLocaleString('es-ES');
+
+            // Unique items unlocked count (0/7)
+            let uniqueUnlocked = 0;
+            TREASURE_TABLE.forEach(t => {
+                if ((state.inventory[t.id] || 0) > 0) uniqueUnlocked++;
+            });
+            document.getElementById('badgeUniqueCount').textContent = `${uniqueUnlocked}/7`;
+
+            // Best drop found
+            const bestLabel = document.getElementById('statBestDrop');
+            if (state.bestRankFound > 0) {
+                const bestItem = TREASURE_TABLE.find(t => t.rank === state.bestRankFound);
+                if (bestItem) {
+                    bestLabel.textContent = bestItem.name;
+                    bestLabel.style.color = bestItem.color;
+                }
+            } else {
+                bestLabel.textContent = 'Ninguno aún';
+                bestLabel.style.color = '#94a3b8';
+            }
+        }
+
+        function triggerScreenFlash(colorHexStr) {
+            const flash = document.getElementById('screenFlash');
+            flash.style.backgroundColor = colorHexStr;
+            flash.style.opacity = '0.38';
+            setTimeout(() => {
+                flash.style.opacity = '0';
+            }, 220);
+        }
+
+        function showEmptyRollToast(count) {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = 'toast-anim absolute left-1/2 bottom-1 glass-panel px-4 py-2 rounded-2xl border border-slate-500/40 shadow-xl flex items-center gap-2 whitespace-nowrap';
+            toast.innerHTML = `
+                <i class="fa-solid fa-wind text-slate-400"></i>
+                <span class="text-xs sm:text-sm font-semibold text-slate-200">
+                    ${count === 1 ? '¡Cofre vacío!' : `¡${count}/${count} cofres vacíos!`}
+                </span>
+                <span class="text-[11px] text-slate-400">Sigue intentando...</span>
+            `;
+            container.appendChild(toast);
+            setTimeout(() => {
+                if (toast.parentNode) toast.parentNode.removeChild(toast);
+            }, 1550);
+        }
+
+        function showRewardModal(batchSize, wonCounts, emptyCount, bestItem, totalWon) {
+            const modal = document.getElementById('rewardModal');
+            const card = document.getElementById('rewardModalCard');
+            const badge = document.getElementById('rewardModalBadge');
+            const title = document.getElementById('rewardModalTitle');
+            const subtitle = document.getElementById('rewardModalSubtitle');
+            const spotlightSection = document.getElementById('rewardSpotlightSection');
+            const listContainer = document.getElementById('rewardItemsList');
+            const emptySummary = document.getElementById('rewardEmptySummary');
+            const repeatBtn = document.getElementById('btnRepeatLastBatch');
+
+            repeatBtn.textContent = `Abrir x${batchSize} otra vez`;
+            subtitle.textContent = `Resultado de abrir ${batchSize} ${batchSize === 1 ? 'cofre' : 'cofres'} de golpe`;
+
+            listContainer.innerHTML = '';
+
+            if (bestItem && totalWon > 0) {
+                card.style.borderColor = bestItem.color;
+                badge.textContent = `¡${totalWon} ${totalWon === 1 ? 'TESORO OBTENIDO' : 'TESOROS OBTENIDOS'}!`;
+                badge.style.backgroundColor = bestItem.color;
+                title.textContent = bestItem.rank >= 5 ? '¡¡BOTÍN LEGENDARIO!!' : '¡TESORO ENCONTRADO!';
+                title.style.color = bestItem.color;
+
+                // Setup 3D Spotlight with the highest rarity item won in this batch
+                spotlightSection.classList.remove('hidden');
+                selectBatchItemFor3DSpotlight(bestItem.id);
+
+                // Populate each won item sorted from rarest to most common
+                TREASURE_TABLE.forEach(item => {
+                    const qty = wonCounts[item.id] || 0;
+                    if (qty > 0) {
+                        const row = document.createElement('div');
+                        row.className = 'p-2.5 rounded-2xl bg-slate-900/90 hover:bg-slate-800/90 border transition cursor-pointer flex items-center justify-between gap-3';
+                        row.style.borderColor = item.color + '66';
+                        row.onclick = () => selectBatchItemFor3DSpotlight(item.id);
+                        row.innerHTML = `
+                            <div class="flex items-center gap-2.5 min-w-0">
+                                <div class="w-10 h-10 rounded-xl flex items-center justify-center font-display font-bold text-sm flex-shrink-0 border"
+                                     style="background:${item.bgBadge}; border-color:${item.color}; color:${item.color}">
+                                    3D
+                                </div>
+                                <div class="min-w-0">
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="text-[10px] font-extrabold uppercase px-1.5 py-0.2 rounded"
+                                              style="background:${item.bgBadge}; color:${item.color}">
+                                            1 : ${item.oddsOneIn.toLocaleString('en-US')}
+                                        </span>
+                                        <span class="text-[10px] text-slate-400 uppercase font-semibold">${item.tier}</span>
+                                    </div>
+                                    <div class="font-display font-bold text-sm sm:text-base text-white truncate">${item.name}</div>
+                                    <div class="text-[11px] text-slate-400 truncate">${item.esName}</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2 flex-shrink-0">
+                                <span class="px-2.5 py-1 rounded-xl font-display font-bold text-base bg-white/10 text-white border border-white/15">
+                                    x${qty}
+                                </span>
+                            </div>
+                        `;
+                        listContainer.appendChild(row);
+                    }
+                });
+
+                emptySummary.innerHTML = emptyCount > 0
+                    ? `<i class="fa-solid fa-box-open text-slate-500"></i><span>Además hubo <strong>${emptyCount}</strong> ${emptyCount === 1 ? 'cofre vacío' : 'cofres vacíos'} en esta tirada.</span>`
+                    : `<i class="fa-solid fa-star text-amber-400"></i><span class="text-amber-300 font-semibold">¡Increíble! Ningún cofre estuvo vacío.</span>`;
+            } else {
+                // Empty batch modal (when checkbox is enabled)
+                card.style.borderColor = '#475569';
+                badge.textContent = 'SIN SUERTE';
+                badge.style.backgroundColor = '#94a3b8';
+                title.textContent = 'COFRES VACÍOS';
+                title.style.color = '#e2e8f0';
+                spotlightSection.classList.add('hidden');
+
+                listContainer.innerHTML = `
+                    <div class="py-8 text-center flex flex-col items-center justify-center gap-2">
+                        <div class="w-14 h-14 rounded-2xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 text-2xl">
+                            <i class="fa-solid fa-wind"></i>
+                        </div>
+                        <div class="font-display text-lg font-bold text-slate-200">
+                            Los ${batchSize} cofres estaban vacíos
+                        </div>
+                        <p class="text-xs text-slate-400 max-w-xs">
+                            Recuerda que el objeto más común (Gizmo) tiene una probabilidad de <strong>1 en 127</strong>. ¡Prueba abrir de 50 en 50!
+                        </p>
+                    </div>
+                `;
+                emptySummary.innerHTML = `<span>0 tesoros encontrados en esta tanda.</span>`;
+            }
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function selectBatchItemFor3DSpotlight(itemId) {
+            const item = TREASURE_TABLE.find(t => t.id === itemId) || TREASURE_TABLE[6];
+            setSpotlight3DItem(item.id);
+            document.getElementById('spotlightItemName').textContent = item.name;
+            document.getElementById('spotlightItemName').style.color = item.color;
+            document.getElementById('spotlightItemDesc').textContent = `${item.esName} • ${item.tier}`;
+            const tag = document.getElementById('spotlightRarityTag');
+            tag.textContent = `1 : ${item.oddsOneIn.toLocaleString('en-US')}`;
+            tag.style.color = item.color;
+            tag.style.borderColor = item.color;
+        }
+
+        function closeRewardModal() {
+            const modal = document.getElementById('rewardModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            // Gently close the 3D chest lid back to ready position
+            chestAnim.targetLidAngle = 0;
+            chestAnim.state = 'idle';
+            setFloatingChestItem(null);
+        }
+
+        /********************************************************************
+         * 9. 3D CATALOG & ODDS INSPECTOR MODAL
+         ********************************************************************/
+        function openCatalogModal() {
+            const modal = document.getElementById('catalogModal');
+            renderCatalogList();
+            inspectCatalogItem(TREASURE_TABLE[0].id);
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeCatalogModal() {
+            const modal = document.getElementById('catalogModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function renderCatalogList() {
+            const container = document.getElementById('catalogListContainer');
+            container.innerHTML = '';
+            const luckMult = LUCK_MODES[state.luckModeIndex].mult;
+
+            TREASURE_TABLE.forEach(item => {
+                const count = state.inventory[item.id] || 0;
+                const unlocked = count > 0;
+                const effectiveOneIn = Math.max(1, Math.round(item.oddsOneIn / luckMult));
+
+                const card = document.createElement('div');
+                card.className = 'p-2.5 rounded-2xl bg-slate-900/85 hover:bg-slate-800 border transition cursor-pointer flex items-center justify-between gap-2.5';
+                card.style.borderColor = unlocked ? item.color + '88' : 'rgba(255,255,255,0.1)';
+                card.onclick = () => inspectCatalogItem(item.id);
+
+                card.innerHTML = `
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <div class="w-9 h-9 rounded-xl flex items-center justify-center text-xs font-display font-bold flex-shrink-0 border"
+                             style="background:${item.bgBadge}; border-color:${item.color}; color:${item.color}">
+                            <i class="fa-solid fa-cube"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-1.5">
+                                <span class="font-display font-bold text-sm text-white truncate">${item.name}</span>
+                            </div>
+                            <div class="text-[11px] text-slate-400 flex items-center gap-2">
+                                <span>Prob: <strong style="color:${item.color}">1 : ${item.oddsOneIn.toLocaleString('en-US')}</strong></span>
+                                ${luckMult > 1 ? `<span class="text-amber-300">(Actual 1:${effectiveOneIn.toLocaleString('en-US')})</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-right flex-shrink-0">
+                        <span class="px-2.5 py-1 rounded-xl text-xs font-display font-bold border ${unlocked ? 'bg-emerald-500/20 border-emerald-400/40 text-emerald-300' : 'bg-slate-800 border-white/10 text-slate-400'}">
+                            x${count}
+                        </span>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function inspectCatalogItem(itemId) {
+            const item = TREASURE_TABLE.find(t => t.id === itemId) || TREASURE_TABLE[0];
+            setCatalog3DItem(item.id);
+
+            const tierEl = document.getElementById('catalogInspectTier');
+            tierEl.textContent = item.tier;
+            tierEl.style.color = item.color;
+            tierEl.style.borderColor = item.color;
+            tierEl.style.backgroundColor = item.bgBadge;
+
+            const nameEl = document.getElementById('catalogInspectName');
+            nameEl.textContent = item.name;
+            nameEl.style.color = item.color;
+
+            document.getElementById('catalogInspectSpanish').textContent = item.esName;
+            document.getElementById('catalogInspectOdds').textContent = `1 : ${item.oddsOneIn.toLocaleString('en-US')}`;
+            document.getElementById('catalogInspectCount').textContent = (state.inventory[item.id] || 0).toLocaleString('es-ES');
+        }
+
+        function resetStats() {
+            state.totalChests = 0;
+            state.totalHits = 0;
+            state.bestRankFound = 0;
+            Object.keys(state.inventory).forEach(k => state.inventory[k] = 0);
+            saveState();
+            updateHUD();
+            renderCatalogList();
+            inspectCatalogItem(TREASURE_TABLE[0].id);
+        }
+
+        /********************************************************************
+         * 10. EVENT LISTENERS & INITIALIZATION ON WINDOW LOAD
+         ********************************************************************/
+        window.onload = function () {
+            initMain3DScene();
+            initSecondary3DViewports();
+            updateHUD();
+
+            // Set initial luck button text
+            const btnLuck = document.getElementById('btnCycleLuck');
+            btnLuck.textContent = LUCK_MODES[state.luckModeIndex].label;
+
+            btnLuck.addEventListener('click', () => {
+                state.luckModeIndex = (state.luckModeIndex + 1) % LUCK_MODES.length;
+                btnLuck.textContent = LUCK_MODES[state.luckModeIndex].label;
+                saveState();
+            });
+
+            document.getElementById('btnOpenCatalog').addEventListener('click', openCatalogModal);
+
+            const btnSound = document.getElementById('btnToggleSound');
+            const iconSound = document.getElementById('iconSound');
+            function syncSoundIcon() {
+                iconSound.className = state.soundEnabled
+                    ? 'fa-solid fa-volume-high text-sm text-emerald-300'
+                    : 'fa-solid fa-volume-xmark text-sm text-slate-400';
+            }
+            syncSoundIcon();
+
+            btnSound.addEventListener('click', () => {
+                state.soundEnabled = !state.soundEnabled;
+                syncSoundIcon();
+                saveState();
+            });
+
+            // Start 60FPS WebGL Loop
+            animateLoop();
+        };
+    </script>
+</body>
+</html>
