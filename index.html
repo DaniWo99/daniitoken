@@ -558,18 +558,139 @@
         }
 
         /********************************************************************
-         * 2. PROCEDURAL WEB AUDIO SYNTHESIZER (NO EXTERNAL ASSETS NEEDED)
+         * 2. PROCEDURAL WEB AUDIO SYNTHESIZER & JACKPOT SONG (iOS FIX)
          ********************************************************************/
         let audioCtx = null;
+        let audioUnlocked = false;
+        const JACKPOT_SONG_URL = 'https://github.com/DaniWo99/daniitoken/raw/refs/heads/main/song.mp3';
+        let jackpotAudio = new Audio(JACKPOT_SONG_URL);
+        jackpotAudio.loop = true;
+        jackpotAudio.preload = 'auto';
+        jackpotAudio.playsInline = true;
+        let isJackpotSongPlaying = false;
+
+        function createFreshAudioContext() {
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContextClass) return null;
+            const ctx = new AudioContextClass();
+            ctx.onstatechange = () => {
+                if (document.visibilityState === 'visible' && (ctx.state === 'suspended' || ctx.state === 'interrupted')) {
+                    ctx.resume().catch(() => {});
+                }
+            };
+            return ctx;
+        }
 
         function initAudio() {
-            if (!audioCtx) {
-                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-                if (AudioContextClass) audioCtx = new AudioContextClass();
+            if (!audioCtx || audioCtx.state === 'closed') {
+                audioCtx = createFreshAudioContext();
             }
-            if (audioCtx && audioCtx.state === 'suspended') {
-                audioCtx.resume();
+            if (!audioCtx) return;
+
+            // iOS Safari fix: after minimizing/switching apps, state can become 'interrupted' or 'suspended'
+            if (audioCtx.state === 'suspended' || audioCtx.state === 'interrupted') {
+                audioCtx.resume().catch(() => {
+                    // If iOS locks the old context permanently, recreate it cleanly on user interaction
+                    try {
+                        audioCtx.close();
+                    } catch (e) {}
+                    audioCtx = createFreshAudioContext();
+                    if (audioCtx) audioCtx.resume().catch(() => {});
+                });
             }
+
+            // Play a 1-frame silent buffer to force iOS WebAudio hardware unmute
+            try {
+                const buffer = audioCtx.createBuffer(1, 1, 22050);
+                const source = audioCtx.createBufferSource();
+                source.buffer = buffer;
+                source.connect(audioCtx.destination);
+                if (source.start) source.start(0);
+            } catch (e) {}
+
+            // Prime the HTML5 Audio element once on first user touch so Auto-Mode can trigger it on iPhone
+            if (!audioUnlocked) {
+                audioUnlocked = true;
+                const prevMuted = jackpotAudio.muted;
+                jackpotAudio.muted = true;
+                const p = jackpotAudio.play();
+                if (p !== undefined) {
+                    p.then(() => {
+                        if (!isJackpotSongPlaying) {
+                            jackpotAudio.pause();
+                            jackpotAudio.currentTime = 0;
+                        }
+                        jackpotAudio.muted = prevMuted;
+                    }).catch(() => {
+                        jackpotAudio.muted = prevMuted;
+                        audioUnlocked = false;
+                    });
+                }
+            }
+        }
+
+        // Automatically recover audio on iPhone when returning to Safari/Chrome or touching screen
+        function setupIOSAudioRecovery() {
+            const unlockEvents = ['touchstart', 'touchend', 'pointerdown', 'click', 'keydown'];
+            const handleUserGesture = () => {
+                initAudio();
+                if (isJackpotSongPlaying && state.soundEnabled && jackpotAudio.paused) {
+                    jackpotAudio.play().catch(() => {});
+                }
+            };
+            unlockEvents.forEach(evt => {
+                window.addEventListener(evt, handleUserGesture, { passive: true });
+            });
+
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') {
+                    if (audioCtx && (audioCtx.state === 'suspended' || audioCtx.state === 'interrupted')) {
+                        audioCtx.resume().catch(() => {});
+                    }
+                    if (isJackpotSongPlaying && state.soundEnabled && jackpotAudio.paused) {
+                        jackpotAudio.play().catch(() => {});
+                    }
+                }
+            });
+
+            window.addEventListener('pageshow', () => {
+                if (audioCtx && (audioCtx.state === 'suspended' || audioCtx.state === 'interrupted')) {
+                    audioCtx.resume().catch(() => {});
+                }
+                if (isJackpotSongPlaying && state.soundEnabled && jackpotAudio.paused) {
+                    jackpotAudio.play().catch(() => {});
+                }
+            });
+
+            window.addEventListener('focus', () => {
+                if (audioCtx && (audioCtx.state === 'suspended' || audioCtx.state === 'interrupted')) {
+                    audioCtx.resume().catch(() => {});
+                }
+            });
+        }
+
+        function playJackpotSong() {
+            isJackpotSongPlaying = true;
+            if (!state.soundEnabled) return;
+            try {
+                jackpotAudio.muted = false;
+                jackpotAudio.loop = true;
+                jackpotAudio.currentTime = 0;
+                const playPromise = jackpotAudio.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch((err) => {
+                        console.warn('Autoplay bloqueado temporalmente, sonará al tocar:', err);
+                    });
+                }
+            } catch (e) {}
+        }
+
+        function stopJackpotSong() {
+            isJackpotSongPlaying = false;
+            try {
+                jackpotAudio.pause();
+                jackpotAudio.currentTime = 0;
+            } catch (e) {}
         }
 
         function playSound(type, rank = 0) {
@@ -1596,6 +1717,11 @@
                     triggerScreenFlash(bestItemInBatch.color);
                     playSound('win', bestItemInBatch.rank);
 
+                    // Play the celebratory looping song whenever Weekly Gold Outfit or Pirate Token drops (manual or auto)
+                    if (hitTargetJackpot) {
+                        playJackpotSong();
+                    }
+
                     if (isAutoRoll) {
                         updateAutoLiveFeedUI(wonCounts, bestItemInBatch);
 
@@ -1828,6 +1954,8 @@
             const modal = document.getElementById('rewardModal');
             modal.classList.add('hidden');
             modal.classList.remove('flex');
+            // Stop the looping jackpot song when closing the reward modal
+            stopJackpotSong();
             // Gently close the 3D chest lid back to ready position
             chestAnim.targetLidAngle = 0;
             chestAnim.state = 'idle';
@@ -1928,6 +2056,7 @@
         window.onload = function () {
             initMain3DScene();
             initSecondary3DViewports();
+            setupIOSAudioRecovery();
             updateHUD();
 
             // Set initial luck button text
@@ -1953,6 +2082,14 @@
 
             btnSound.addEventListener('click', () => {
                 state.soundEnabled = !state.soundEnabled;
+                if (!state.soundEnabled) {
+                    jackpotAudio.pause();
+                } else {
+                    initAudio();
+                    if (isJackpotSongPlaying) {
+                        jackpotAudio.play().catch(() => {});
+                    }
+                }
                 syncSoundIcon();
                 saveState();
             });
