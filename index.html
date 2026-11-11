@@ -74,6 +74,20 @@
         .btn-3d-gold:active:not(:disabled) {
             box-shadow: 0 1px 0 #854d0e, 0 3px 10px rgba(234, 179, 8, 0.4);
         }
+        .btn-3d-emerald {
+            background: linear-gradient(180deg, #34d399 0%, #059669 100%);
+            box-shadow: 0 5px 0 #065f46, 0 8px 15px rgba(5, 150, 105, 0.4);
+        }
+        .btn-3d-emerald:active:not(:disabled) {
+            box-shadow: 0 1px 0 #065f46, 0 3px 8px rgba(5, 150, 105, 0.4);
+        }
+        .btn-3d-rose {
+            background: linear-gradient(180deg, #fb7185 0%, #e11d48 100%);
+            box-shadow: 0 5px 0 #9f1239, 0 8px 20px rgba(225, 29, 72, 0.55);
+        }
+        .btn-3d-rose:active:not(:disabled) {
+            box-shadow: 0 1px 0 #9f1239, 0 3px 8px rgba(225, 29, 72, 0.4);
+        }
 
         /* Glassmorphism */
         .glass-panel {
@@ -193,58 +207,97 @@
         </div>
     </header>
 
-    <!-- CENTER FLOATING FEEDBACK & INSTRUCTIONS -->
-    <main class="relative z-10 flex-1 flex flex-col items-center justify-between pointer-events-none py-2">
-        <!-- Interactive 3D Hint -->
-        <div class="mt-1 text-center px-4">
-            <div id="chestStatusBadge" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/35 border border-white/10 text-[11px] text-slate-300 backdrop-blur-sm">
+    <!-- CENTER FLOATING FEEDBACK, AUTO LIVE STREAM & INSTRUCTIONS -->
+    <main class="relative z-10 flex-1 flex flex-col items-center justify-between pointer-events-none py-1 overflow-hidden">
+        <!-- Top Hint / Auto Status Banner -->
+        <div class="mt-0.5 text-center px-3 w-full max-w-md">
+            <div id="chestStatusBadge" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/45 border border-white/10 text-[11px] text-slate-300 backdrop-blur-sm transition-all">
                 <i class="fa-solid fa-hand-pointer text-amber-300 animate-bounce"></i>
                 <span>Arrastra para rotar el cofre 3D • Probabilidades reales</span>
             </div>
         </div>
 
+        <!-- LIVE AUTO-OPEN FEED (Shows drops in real-time while Auto is running) -->
+        <div id="autoLiveFeedPanel" class="hidden w-full max-w-md px-3 mt-auto mb-1 pointer-events-auto transition-all">
+            <div class="glass-panel rounded-2xl p-2.5 border border-emerald-400/40 shadow-xl">
+                <div class="flex items-center justify-between text-[11px] pb-1.5 mb-1.5 border-b border-white/10">
+                    <div class="flex items-center gap-1.5 font-display font-bold text-emerald-300">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                        <span>AUTO-APERTURA EN CURSO</span>
+                    </div>
+                    <div class="text-slate-300 text-[10px]">
+                        Sesión: <strong id="autoSessionChests" class="text-white">0</strong> cofres • <strong id="autoSessionHits" class="text-emerald-300">0</strong> premios
+                    </div>
+                </div>
+                <!-- Live Feed Stream Items -->
+                <div id="autoLiveStreamList" class="flex items-center gap-1.5 overflow-x-auto py-1 min-h-[44px]">
+                    <span class="text-[11px] text-slate-400 italic mx-auto">Abriendo cofres a toda velocidad...</span>
+                </div>
+            </div>
+        </div>
+
         <!-- Floating Toast Container for Empty Rolls or Quick Info -->
-        <div id="toastContainer" class="relative w-full h-14 pointer-events-none"></div>
+        <div id="toastContainer" class="relative w-full h-11 pointer-events-none"></div>
     </main>
 
-    <!-- BOTTOM CONTROL DOCK: Batch Open Buttons (1x, 10x, 30x, 50x) -->
-    <footer class="relative z-10 w-full max-w-lg mx-auto px-3 pb-4 pt-1 pointer-events-auto">
-        <div class="glass-panel rounded-3xl p-3 shadow-2xl border border-white/15">
+    <!-- BOTTOM CONTROL DOCK: Batch Open Buttons (1x, 10x, 30x, 50x) + AUTO MODE -->
+    <footer class="relative z-10 w-full max-w-lg mx-auto px-3 pb-3 pt-1 pointer-events-auto">
+        <div class="glass-panel rounded-3xl p-2.5 sm:p-3 shadow-2xl border border-white/15 flex flex-col gap-2">
             <!-- Quick Options Bar -->
-            <div class="flex items-center justify-between px-1 mb-2.5 text-xs text-slate-300">
-                <span class="font-display uppercase tracking-wider text-[11px] text-amber-300 flex items-center gap-1.5">
-                    <i class="fa-solid fa-bolt"></i> Apertura Instantánea de Golpe
+            <div class="flex items-center justify-between px-1 text-xs text-slate-300">
+                <span class="font-display uppercase tracking-wider text-[10px] sm:text-[11px] text-amber-300 flex items-center gap-1">
+                    <i class="fa-solid fa-bolt"></i> Apertura de Golpe
                 </span>
-                <label class="flex items-center gap-1.5 cursor-pointer select-none text-[11px] text-slate-300 hover:text-white">
+                <label class="flex items-center gap-1.5 cursor-pointer select-none text-[10px] sm:text-[11px] text-slate-300 hover:text-white">
                     <input type="checkbox" id="chkPopupOnEmpty" class="rounded bg-slate-800 border-slate-600 text-amber-500 focus:ring-0 w-3.5 h-3.5">
                     <span>Pop-up si sale vacío</span>
                 </label>
             </div>
 
-            <!-- 4 Batch Buttons Grid -->
-            <div class="grid grid-cols-4 gap-2 sm:gap-2.5">
-                <button onclick="openChestBatch(1)" class="btn-3d btn-3d-blue rounded-2xl py-2.5 px-1 flex flex-col items-center justify-center text-white">
-                    <span class="text-[10px] uppercase font-bold tracking-wider opacity-90">Abrir</span>
-                    <span class="font-display text-xl sm:text-2xl font-bold leading-none mt-0.5">x1</span>
+            <!-- 4 Manual Batch Buttons Grid -->
+            <div class="grid grid-cols-4 gap-2">
+                <button onclick="openChestBatch(1, false)" class="btn-3d btn-3d-blue rounded-2xl py-2 px-1 flex flex-col items-center justify-center text-white">
+                    <span class="text-[9px] uppercase font-bold tracking-wider opacity-90">Abrir</span>
+                    <span class="font-display text-lg sm:text-xl font-bold leading-none mt-0.5">x1</span>
                     <span class="text-[9px] opacity-80 mt-0.5">1 Cofre</span>
                 </button>
 
-                <button onclick="openChestBatch(10)" class="btn-3d btn-3d-purple rounded-2xl py-2.5 px-1 flex flex-col items-center justify-center text-white">
-                    <span class="text-[10px] uppercase font-bold tracking-wider opacity-90">Abrir</span>
-                    <span class="font-display text-xl sm:text-2xl font-bold leading-none mt-0.5">x10</span>
+                <button onclick="openChestBatch(10, false)" class="btn-3d btn-3d-purple rounded-2xl py-2 px-1 flex flex-col items-center justify-center text-white">
+                    <span class="text-[9px] uppercase font-bold tracking-wider opacity-90">Abrir</span>
+                    <span class="font-display text-lg sm:text-xl font-bold leading-none mt-0.5">x10</span>
                     <span class="text-[9px] opacity-80 mt-0.5">De golpe</span>
                 </button>
 
-                <button onclick="openChestBatch(30)" class="btn-3d btn-3d-orange rounded-2xl py-2.5 px-1 flex flex-col items-center justify-center text-white">
-                    <span class="text-[10px] uppercase font-bold tracking-wider opacity-90">Abrir</span>
-                    <span class="font-display text-xl sm:text-2xl font-bold leading-none mt-0.5">x30</span>
+                <button onclick="openChestBatch(30, false)" class="btn-3d btn-3d-orange rounded-2xl py-2 px-1 flex flex-col items-center justify-center text-white">
+                    <span class="text-[9px] uppercase font-bold tracking-wider opacity-90">Abrir</span>
+                    <span class="font-display text-lg sm:text-xl font-bold leading-none mt-0.5">x30</span>
                     <span class="text-[9px] opacity-80 mt-0.5">De golpe</span>
                 </button>
 
-                <button onclick="openChestBatch(50)" class="btn-3d btn-3d-gold rounded-2xl py-2.5 px-1 flex flex-col items-center justify-center">
-                    <span class="text-[10px] uppercase font-extrabold tracking-wider opacity-90">Abrir</span>
-                    <span class="font-display text-xl sm:text-2xl font-bold leading-none mt-0.5">x50</span>
+                <button onclick="openChestBatch(50, false)" class="btn-3d btn-3d-gold rounded-2xl py-2 px-1 flex flex-col items-center justify-center">
+                    <span class="text-[9px] uppercase font-extrabold tracking-wider opacity-90">Abrir</span>
+                    <span class="font-display text-lg sm:text-xl font-bold leading-none mt-0.5">x50</span>
                     <span class="text-[9px] font-bold opacity-85 mt-0.5">¡Máximo!</span>
+                </button>
+            </div>
+
+            <!-- AUTO-OPEN BAR (Stops on button click OR Weekly Gold Outfit / Pirate Shop Token) -->
+            <div class="pt-1 border-t border-white/10 flex items-center gap-2">
+                <!-- Batch Size Selector for Auto Mode -->
+                <div class="flex items-center bg-slate-900/90 border border-white/15 rounded-2xl p-1 gap-1">
+                    <span class="text-[9px] uppercase font-bold text-slate-400 px-1.5">Lote:</span>
+                    <button onclick="setAutoBatchSize(10)" id="autoSize10" class="px-2 py-1 rounded-xl text-[11px] font-display font-bold transition text-slate-400 hover:text-white">x10</button>
+                    <button onclick="setAutoBatchSize(30)" id="autoSize30" class="px-2 py-1 rounded-xl text-[11px] font-display font-bold transition text-slate-400 hover:text-white">x30</button>
+                    <button onclick="setAutoBatchSize(50)" id="autoSize50" class="px-2 py-1 rounded-xl text-[11px] font-display font-bold transition bg-amber-400 text-slate-950 shadow">x50</button>
+                </div>
+
+                <!-- Main Auto Toggle Button -->
+                <button id="btnToggleAuto" onclick="toggleAutoOpen()" class="flex-1 btn-3d btn-3d-emerald rounded-2xl py-2 px-3 flex items-center justify-center gap-2 text-white font-display font-bold text-xs sm:text-sm">
+                    <i id="iconAutoBtn" class="fa-solid fa-play text-xs"></i>
+                    <div class="text-left leading-tight">
+                        <div id="textAutoBtn" class="uppercase tracking-wide">AUTO ABRIR</div>
+                        <div class="text-[9px] font-sans font-normal opacity-90">Para en Gold Outfit o Pirate Token</div>
+                    </div>
                 </button>
             </div>
         </div>
@@ -929,9 +982,8 @@
 
             mainScene = new THREE.Scene();
 
-            mainCamera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
-            mainCamera.position.set(0, 2.2, 6.8);
-            mainCamera.lookAt(0, 0.2, 0);
+            mainCamera = new THREE.PerspectiveCamera(42, width / height, 0.1, 100);
+            mainScene.add(particlesGroup);
 
             mainRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             mainRenderer.setSize(width, height);
@@ -953,6 +1005,9 @@
             // Build the 3D Treasure Chest & Pedestal
             chestGroup = new THREE.Group();
             mainScene.add(chestGroup);
+
+            // Scale down chest group & adjust camera distance responsively so it fits mobile portrait screens cleanly
+            updateResponsiveChestScale(width, height);
 
             // Pedestal Platform
             const pedestalGeo = new THREE.CylinderGeometry(2.1, 2.4, 0.35, 24);
@@ -1070,6 +1125,26 @@
             window.addEventListener('resize', onMainResize);
         }
 
+        function updateResponsiveChestScale(width, height) {
+            if (!mainCamera || !chestGroup) return;
+            const aspect = width / Math.max(height, 1);
+            const isMobilePortrait = aspect < 0.85 || width < 550;
+
+            if (isMobilePortrait) {
+                // Compact scale & further camera so chest + open lid + floating 3D prize fit comfortably on mobile
+                const mobileScale = Math.max(0.54, Math.min(0.66, aspect * 1.1));
+                chestGroup.scale.set(mobileScale, mobileScale, mobileScale);
+                particlesGroup.scale.set(mobileScale, mobileScale, mobileScale);
+                mainCamera.position.set(0, 2.35, 8.6);
+                mainCamera.lookAt(0, 0.15, 0);
+            } else {
+                chestGroup.scale.set(0.78, 0.78, 0.78);
+                particlesGroup.scale.set(0.78, 0.78, 0.78);
+                mainCamera.position.set(0, 2.2, 7.2);
+                mainCamera.lookAt(0, 0.2, 0);
+            }
+        }
+
         function onMainResize() {
             if (!mainRenderer || !mainCamera) return;
             const container = document.getElementById('canvasContainer');
@@ -1078,6 +1153,7 @@
             mainCamera.aspect = w / h;
             mainCamera.updateProjectionMatrix();
             mainRenderer.setSize(w, h);
+            updateResponsiveChestScale(w, h);
         }
 
         // Spawn 3D Burst Confetti / Dust Particles from the Chest
@@ -1132,170 +1208,305 @@
         }
 
         /********************************************************************
-         * 5. SECONDARY 3D VIEWPORTS (REWARD MODAL & CATALOG INSPECTOR)
+         * 5. SECONDARY 3D VIEWPORTS (REWARD POPUP & COLLECTION INSPECTOR)
          ********************************************************************/
-        let spotlightScene, spotlightCamera, spotlightRenderer, spotlightMesh;
-        let catalogScene, catalogCamera, catalogRenderer, catalogMesh;
-        let spotlightRotY = 0;
-        let catalogRotY = 0;
+        let spotlightScene, spotlightCamera, spotlightRenderer, spotlightMesh = null;
+        let catalogScene, catalogCamera, catalogRenderer, catalogMesh = null;
+        let spotlightRot = { y: 0, x: 0.15, dragging: false, px: 0, py: 0 };
+        let catalogRot = { y: 0, x: 0.15, dragging: false, px: 0, py: 0 };
 
         function initSecondary3DViewports() {
-            // 1. Reward Modal 3D Spotlight
+            // 1. Reward Spotlight 3D Canvas
             const spotCanvas = document.getElementById('spotlight3DCanvas');
             spotlightScene = new THREE.Scene();
-            spotlightCamera = new THREE.PerspectiveCamera(42, 1, 0.1, 50);
-            spotlightCamera.position.set(0, 0.3, 3.3);
+            spotlightCamera = new THREE.PerspectiveCamera(40, 1, 0.1, 50);
+            spotlightCamera.position.set(0, 0.3, 3.6);
             spotlightCamera.lookAt(0, 0, 0);
 
             spotlightRenderer = new THREE.WebGLRenderer({ canvas: spotCanvas, antialias: true, alpha: true });
             spotlightRenderer.setSize(160, 160);
             spotlightRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-            spotlightScene.add(new THREE.AmbientLight(0xffffff, 0.8));
-            const spotDir = new THREE.DirectionalLight(0xffffff, 1.3);
-            spotDir.position.set(3, 5, 4);
-            spotlightScene.add(spotDir);
+            spotlightScene.add(new THREE.AmbientLight(0xffffff, 0.85));
+            const sLight = new THREE.DirectionalLight(0xfff5d6, 1.4);
+            sLight.position.set(3, 5, 4);
+            spotlightScene.add(sLight);
 
-            // Drag rotation on spotlight canvas
-            let spotDrag = false, spotPrevX = 0;
-            spotCanvas.addEventListener('pointerdown', e => { spotDrag = true; spotPrevX = e.clientX; });
-            window.addEventListener('pointermove', e => {
-                if (!spotDrag) return;
-                spotlightRotY += (e.clientX - spotPrevX) * 0.015;
-                spotPrevX = e.clientX;
+            spotCanvas.addEventListener('pointerdown', e => {
+                spotlightRot.dragging = true;
+                spotlightRot.px = e.clientX;
+                spotlightRot.py = e.clientY;
             });
-            window.addEventListener('pointerup', () => { spotDrag = false; });
+            window.addEventListener('pointermove', e => {
+                if (!spotlightRot.dragging) return;
+                spotlightRot.y += (e.clientX - spotlightRot.px) * 0.012;
+                spotlightRot.x = Math.max(-0.6, Math.min(0.6, spotlightRot.x + (e.clientY - spotlightRot.py) * 0.01));
+                spotlightRot.px = e.clientX;
+                spotlightRot.py = e.clientY;
+            });
+            window.addEventListener('pointerup', () => { spotlightRot.dragging = false; });
 
-            // 2. Catalog Modal 3D Inspector
+            // 2. Catalog Inspector 3D Canvas
             const catCanvas = document.getElementById('catalog3DCanvas');
             catalogScene = new THREE.Scene();
-            catalogCamera = new THREE.PerspectiveCamera(42, 1, 0.1, 50);
-            catalogCamera.position.set(0, 0.3, 3.3);
+            catalogCamera = new THREE.PerspectiveCamera(40, 1, 0.1, 50);
+            catalogCamera.position.set(0, 0.3, 3.6);
             catalogCamera.lookAt(0, 0, 0);
 
             catalogRenderer = new THREE.WebGLRenderer({ canvas: catCanvas, antialias: true, alpha: true });
-            catalogRenderer.setSize(130, 130);
+            catalogRenderer.setSize(140, 140);
             catalogRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
             catalogScene.add(new THREE.AmbientLight(0xffffff, 0.85));
-            const catDir = new THREE.DirectionalLight(0xffffff, 1.3);
-            catDir.position.set(3, 5, 4);
-            catalogScene.add(catDir);
+            const cLight = new THREE.DirectionalLight(0xfff5d6, 1.4);
+            cLight.position.set(3, 5, 4);
+            catalogScene.add(cLight);
 
-            let catDrag = false, catPrevX = 0;
-            catCanvas.addEventListener('pointerdown', e => { catDrag = true; catPrevX = e.clientX; });
-            window.addEventListener('pointermove', e => {
-                if (!catDrag) return;
-                catalogRotY += (e.clientX - catPrevX) * 0.015;
-                catPrevX = e.clientX;
+            catCanvas.addEventListener('pointerdown', e => {
+                catalogRot.dragging = true;
+                catalogRot.px = e.clientX;
+                catalogRot.py = e.clientY;
             });
-            window.addEventListener('pointerup', () => { catDrag = false; });
+            window.addEventListener('pointermove', e => {
+                if (!catalogRot.dragging) return;
+                catalogRot.y += (e.clientX - catalogRot.px) * 0.012;
+                catalogRot.x = Math.max(-0.6, Math.min(0.6, catalogRot.x + (e.clientY - catalogRot.py) * 0.01));
+                catalogRot.px = e.clientX;
+                catalogRot.py = e.clientY;
+            });
+            window.addEventListener('pointerup', () => { catalogRot.dragging = false; });
         }
 
         function setSpotlight3DItem(itemId) {
-            if (spotlightMesh) spotlightScene.remove(spotlightMesh);
+            if (spotlightMesh) {
+                spotlightScene.remove(spotlightMesh);
+                spotlightMesh = null;
+            }
+            if (!itemId) return;
             spotlightMesh = createTreasure3DMesh(itemId);
+            spotlightRot.y = 0;
+            spotlightRot.x = 0.15;
             spotlightScene.add(spotlightMesh);
         }
 
         function setCatalog3DItem(itemId) {
-            if (catalogMesh) catalogScene.remove(catalogMesh);
+            if (catalogMesh) {
+                catalogScene.remove(catalogMesh);
+                catalogMesh = null;
+            }
+            if (!itemId) return;
             catalogMesh = createTreasure3DMesh(itemId);
+            catalogRot.y = 0;
+            catalogRot.x = 0.15;
             catalogScene.add(catalogMesh);
         }
 
         /********************************************************************
-         * 6. MASTER ANIMATION LOOP
+         * 6. MAIN 60FPS ANIMATION LOOP & CLOCK
          ********************************************************************/
-        let clock = new THREE.Clock();
+        const clock = new THREE.Clock();
 
         function animateLoop() {
             requestAnimationFrame(animateLoop);
-            const elapsed = clock.getElapsedTime();
+            const t = clock.getElapsedTime();
 
-            // 1. Update Main Chest 3D Scene
             if (chestGroup) {
-                // Gentle floating hover
-                const baseHoverY = Math.sin(elapsed * 2.4) * 0.08;
-
-                // Handle chest animation state
-                if (chestAnim.state === 'shaking') {
-                    chestAnim.timer -= 0.016;
-                    const shakeOffset = (Math.random() - 0.5) * chestAnim.shakeIntensity;
-                    chestGroup.position.set(shakeOffset, baseHoverY + Math.abs(shakeOffset) * 0.5, 0);
-                    chestGroup.rotation.z = (Math.random() - 0.5) * 0.14;
-                } else {
-                    chestGroup.position.x *= 0.8;
-                    chestGroup.position.y = baseHoverY;
-                    chestGroup.rotation.z *= 0.8;
+                if (!chestAnim.isDragging && chestAnim.state !== 'shaking') {
+                    chestAnim.userRotY = Math.sin(t * 0.65) * 0.22;
                 }
 
-                // Smooth lid opening/closing
+                // Shake effect when opening
+                let shakeX = 0, shakeZ = 0;
+                if (chestAnim.state === 'shaking') {
+                    shakeX = (Math.random() - 0.5) * chestAnim.shakeIntensity;
+                    shakeZ = (Math.random() - 0.5) * chestAnim.shakeIntensity;
+                }
+
+                chestGroup.rotation.y = chestAnim.userRotY + shakeZ * 0.5;
+                chestGroup.rotation.x = chestAnim.userRotX;
+                chestGroup.position.x = shakeX;
+                chestGroup.position.y = Math.sin(t * 2.2) * 0.05;
+
+                // Smooth lid interpolation
                 chestAnim.lidAngle += (chestAnim.targetLidAngle - chestAnim.lidAngle) * 0.18;
                 chestLidPivot.rotation.x = chestAnim.lidAngle;
 
-                // Auto return lid to closed after short hold if empty
-                if (chestAnim.state === 'open_empty' && elapsed - chestAnim.openTimestamp > 0.45) {
+                // Auto close lid after empty open
+                if (chestAnim.state === 'open_empty' && t - (chestAnim.openTimestamp || 0) > 0.7) {
                     chestAnim.targetLidAngle = 0;
                     chestAnim.state = 'idle';
+                    setFloatingChestItem(null);
                 }
 
-                // Apply user drag rotation + subtle idle sway
-                if (!chestAnim.isDragging && chestAnim.state === 'idle') {
-                    chestAnim.userRotY += 0.0035;
-                }
-                chestGroup.rotation.y = chestAnim.userRotY;
-                chestGroup.rotation.x = chestAnim.userRotX;
-
-                // Rotate floating 3D reward above chest if active
                 if (floatingItemPreview) {
-                    floatingItemPreview.rotation.y = elapsed * 1.8;
-                    floatingItemPreview.position.y = 1.45 + Math.sin(elapsed * 3.5) * 0.12;
+                    floatingItemPreview.rotation.y = t * 1.8;
+                    floatingItemPreview.position.y = 1.55 + Math.sin(t * 3.2) * 0.1;
                 }
+            }
 
-                // Update burst particles
-                for (let i = burstParticles.length - 1; i >= 0; i--) {
-                    const p = burstParticles[i];
-                    p.mesh.position.x += p.vx;
-                    p.mesh.position.y += p.vy;
-                    p.mesh.position.z += p.vz;
-                    p.vy -= 0.006; // gravity
-                    p.mesh.rotation.x += 0.1;
-                    p.mesh.rotation.y += 0.12;
-                    p.life -= p.decay;
-                    p.mesh.material.opacity = Math.max(0, p.life);
-                    if (p.life <= 0) {
-                        particlesGroup.remove(p.mesh);
-                        burstParticles.splice(i, 1);
-                    }
+            // Update Burst Particles
+            for (let i = burstParticles.length - 1; i >= 0; i--) {
+                const p = burstParticles[i];
+                p.mesh.position.x += p.vx;
+                p.mesh.position.y += p.vy;
+                p.mesh.position.z += p.vz;
+                p.vy -= 0.006; // gravity
+                p.mesh.rotation.x += 0.08;
+                p.mesh.rotation.y += 0.08;
+                p.life -= p.decay;
+                p.mesh.material.opacity = Math.max(0, p.life);
+                if (p.life <= 0) {
+                    particlesGroup.remove(p.mesh);
+                    burstParticles.splice(i, 1);
                 }
+            }
 
+            if (mainRenderer && mainScene && mainCamera) {
                 mainRenderer.render(mainScene, mainCamera);
             }
 
-            // 2. Render Reward Modal 3D Spotlight if visible
-            const rewardModal = document.getElementById('rewardModal');
-            if (rewardModal && !rewardModal.classList.contains('hidden') && spotlightMesh) {
-                spotlightRotY += 0.02;
-                spotlightMesh.rotation.y = spotlightRotY;
-                spotlightMesh.rotation.x = Math.sin(elapsed * 2) * 0.15;
+            // Render Spotlight 3D if Reward Modal is open
+            if (spotlightMesh && spotlightRenderer) {
+                if (!spotlightRot.dragging) spotlightRot.y += 0.02;
+                spotlightMesh.rotation.y = spotlightRot.y;
+                spotlightMesh.rotation.x = spotlightRot.x;
                 spotlightRenderer.render(spotlightScene, spotlightCamera);
             }
 
-            // 3. Render Catalog Modal 3D Inspector if visible
-            const catalogModal = document.getElementById('catalogModal');
-            if (catalogModal && !catalogModal.classList.contains('hidden') && catalogMesh) {
-                catalogRotY += 0.018;
-                catalogMesh.rotation.y = catalogRotY;
-                catalogMesh.rotation.x = Math.sin(elapsed * 1.8) * 0.14;
+            // Render Catalog 3D if Catalog Modal is open
+            if (catalogMesh && catalogRenderer) {
+                if (!catalogRot.dragging) catalogRot.y += 0.02;
+                catalogMesh.rotation.y = catalogRot.y;
+                catalogMesh.rotation.x = catalogRot.x;
                 catalogRenderer.render(catalogScene, catalogCamera);
             }
         }
 
         /********************************************************************
-         * 7. CORE CHEST ROLLING LOGIC ("ABRIR DE GOLPE" 1x, 10x, 30x, 50x)
+         * 7. CORE CHEST ROLLING LOGIC ("ABRIR DE GOLPE" & MODO AUTOMÁTICO)
          ********************************************************************/
         let isRollingBatch = false;
+        let autoOpenState = {
+            active: false,
+            batchSize: 50,
+            timerId: null,
+            sessionChests: 0,
+            sessionHits: 0,
+            sessionDrops: {}
+        };
+
+        function setAutoBatchSize(size) {
+            autoOpenState.batchSize = size;
+            [10, 30, 50].forEach(s => {
+                const btn = document.getElementById('autoSize' + s);
+                if (!btn) return;
+                if (s === size) {
+                    btn.className = 'px-2 py-1 rounded-xl text-[11px] font-display font-bold transition bg-amber-400 text-slate-950 shadow';
+                } else {
+                    btn.className = 'px-2 py-1 rounded-xl text-[11px] font-display font-bold transition text-slate-400 hover:text-white';
+                }
+            });
+        }
+
+        function toggleAutoOpen() {
+            if (autoOpenState.active) {
+                stopAutoOpen('manual');
+            } else {
+                startAutoOpen();
+            }
+        }
+
+        function startAutoOpen() {
+            closeRewardModal();
+            closeCatalogModal();
+            autoOpenState.active = true;
+            autoOpenState.sessionChests = 0;
+            autoOpenState.sessionHits = 0;
+            autoOpenState.sessionDrops = {};
+
+            // Update button UI to STOP state
+            const btn = document.getElementById('btnToggleAuto');
+            const icon = document.getElementById('iconAutoBtn');
+            const text = document.getElementById('textAutoBtn');
+            btn.classList.remove('btn-3d-emerald');
+            btn.classList.add('btn-3d-rose');
+            icon.className = 'fa-solid fa-stop text-xs animate-pulse';
+            text.textContent = 'PARAR AUTO';
+
+            // Update status badge & show live stream panel
+            const badge = document.getElementById('chestStatusBadge');
+            badge.innerHTML = `<i class="fa-solid fa-bolt text-emerald-400 animate-spin"></i><span class="text-emerald-300 font-semibold">Auto-Apertura activa: buscando Weekly Gold Outfit o Pirate Token...</span>`;
+
+            const feedPanel = document.getElementById('autoLiveFeedPanel');
+            feedPanel.classList.remove('hidden');
+            document.getElementById('autoSessionChests').textContent = '0';
+            document.getElementById('autoSessionHits').textContent = '0';
+            document.getElementById('autoLiveStreamList').innerHTML = `<span class="text-[11px] text-slate-400 italic mx-auto">Abriendo cofres a toda velocidad...</span>`;
+
+            runAutoStep();
+        }
+
+        function stopAutoOpen(reason = 'manual') {
+            autoOpenState.active = false;
+            if (autoOpenState.timerId) {
+                clearTimeout(autoOpenState.timerId);
+                autoOpenState.timerId = null;
+            }
+
+            const btn = document.getElementById('btnToggleAuto');
+            const icon = document.getElementById('iconAutoBtn');
+            const text = document.getElementById('textAutoBtn');
+            btn.classList.remove('btn-3d-rose');
+            btn.classList.add('btn-3d-emerald');
+            icon.className = 'fa-solid fa-play text-xs';
+            text.textContent = 'AUTO ABRIR';
+
+            const badge = document.getElementById('chestStatusBadge');
+            if (reason === 'jackpot') {
+                badge.innerHTML = `<i class="fa-solid fa-crown text-amber-400 animate-bounce"></i><span class="text-amber-300 font-bold">¡AUTO PARADO! ¡Conseguiste un tesoro ultra-raro!</span>`;
+            } else {
+                badge.innerHTML = `<i class="fa-solid fa-hand-pointer text-amber-300"></i><span>Auto detenido (${autoOpenState.sessionChests.toLocaleString('es-ES')} cofres en sesión)</span>`;
+            }
+        }
+
+        function runAutoStep() {
+            if (!autoOpenState.active) return;
+            openChestBatch(autoOpenState.batchSize, true);
+        }
+
+        function updateAutoLiveFeedUI(wonCounts, bestItemInBatch) {
+            document.getElementById('autoSessionChests').textContent = autoOpenState.sessionChests.toLocaleString('es-ES');
+            document.getElementById('autoSessionHits').textContent = autoOpenState.sessionHits.toLocaleString('es-ES');
+
+            const streamList = document.getElementById('autoLiveStreamList');
+            const hasAnyDrops = Object.keys(autoOpenState.sessionDrops).length > 0;
+            if (!hasAnyDrops) return;
+
+            streamList.innerHTML = '';
+            // Render accumulated session drops sorted from rarest to most common, clickable to inspect in 3D
+            TREASURE_TABLE.forEach(item => {
+                const count = autoOpenState.sessionDrops[item.id] || 0;
+                if (count > 0) {
+                    const isNewHit = (wonCounts[item.id] || 0) > 0;
+                    const pill = document.createElement('button');
+                    pill.className = `flex-shrink-0 px-2.5 py-1 rounded-xl border flex items-center gap-1.5 text-left transition ${isNewHit ? 'scale-105 shadow-lg' : 'opacity-90'}`;
+                    pill.style.backgroundColor = item.bgBadge;
+                    pill.style.borderColor = item.color;
+                    pill.onclick = () => {
+                        stopAutoOpen('manual');
+                        showRewardModal(autoOpenState.sessionChests, autoOpenState.sessionDrops, autoOpenState.sessionChests - autoOpenState.sessionHits, item, autoOpenState.sessionHits);
+                    };
+                    pill.innerHTML = `
+                        <i class="fa-solid fa-cube text-[11px]" style="color:${item.color}"></i>
+                        <div>
+                            <div class="font-display font-bold text-[11px] text-white leading-none">${item.name}</div>
+                            <div class="text-[9px] font-bold" style="color:${item.color}">x${count.toLocaleString('es-ES')} • Ver 3D</div>
+                        </div>
+                    `;
+                    streamList.appendChild(pill);
+                }
+            });
+        }
 
         function rollSingleChest(luckMult) {
             // Roll from rarest (1:1,562,500) to most common (1:127)
@@ -1309,19 +1520,21 @@
             return null; // Empty chest (~98.41% on 1x Real Odds)
         }
 
-        function openChestBatch(count) {
+        function openChestBatch(count, isAutoRoll = false) {
             if (isRollingBatch) return;
+            if (!isAutoRoll && autoOpenState.active) {
+                stopAutoOpen('manual');
+            }
             isRollingBatch = true;
             state.lastBatchSize = count;
 
             const luckMult = LUCK_MODES[state.luckModeIndex].mult;
 
-            // Play chest rattle sound & start brief violent shake before instant burst
+            // Play chest rattle sound & start brief shake before burst
             playSound('shake');
             chestAnim.state = 'shaking';
-            chestAnim.shakeIntensity = count >= 30 ? 0.26 : 0.16;
+            chestAnim.shakeIntensity = count >= 30 ? 0.22 : 0.14;
             chestAnim.targetLidAngle = 0;
-            setFloatingChestItem(null);
 
             // Roll all 'count' chests at once
             const wonCounts = {};
@@ -1337,6 +1550,11 @@
                     state.totalHits++;
                     totalWonInBatch++;
 
+                    if (isAutoRoll) {
+                        autoOpenState.sessionHits++;
+                        autoOpenState.sessionDrops[result.id] = (autoOpenState.sessionDrops[result.id] || 0) + 1;
+                    }
+
                     if (!bestItemInBatch || result.rank > bestItemInBatch.rank) {
                         bestItemInBatch = result;
                     }
@@ -1349,29 +1567,52 @@
             }
 
             state.totalChests += count;
+            if (isAutoRoll) {
+                autoOpenState.sessionChests += count;
+            }
             saveState();
             updateHUD();
 
-            // After a snappy 160ms shake, burst open all at once!
+            const shakeDuration = isAutoRoll ? 95 : 150;
+
             setTimeout(() => {
                 isRollingBatch = false;
                 chestAnim.openTimestamp = clock.getElapsedTime();
 
+                // Check if Weekly Gold Outfit (id: 'gold_outfit') or Pirate Shop Access / Pirate Token (id: 'pirate_shop') dropped!
+                const hitTargetJackpot = (wonCounts['gold_outfit'] > 0) || (wonCounts['pirate_shop'] > 0);
+
                 if (bestItemInBatch) {
                     // WINNER BATCH!
-                    chestAnim.state = 'open_hold';
+                    chestAnim.state = isAutoRoll && !hitTargetJackpot ? 'open_empty' : 'open_hold';
                     chestAnim.targetLidAngle = -Math.PI * 0.62;
                     chestInnerGlowLight.color.setHex(bestItemInBatch.hex);
                     chestInnerGlowLight.intensity = 2.6;
                     chestGroup.userData.innerCore.material.color.setHex(bestItemInBatch.hex);
                     chestGroup.userData.runeRing.material.color.setHex(bestItemInBatch.hex);
 
-                    spawnChestBurstParticles(bestItemInBatch.hex, 55, false);
+                    spawnChestBurstParticles(bestItemInBatch.hex, isAutoRoll ? 30 : 50, false);
                     setFloatingChestItem(bestItemInBatch.id);
                     triggerScreenFlash(bestItemInBatch.color);
                     playSound('win', bestItemInBatch.rank);
 
-                    showRewardModal(count, wonCounts, emptyCount, bestItemInBatch, totalWonInBatch);
+                    if (isAutoRoll) {
+                        updateAutoLiveFeedUI(wonCounts, bestItemInBatch);
+
+                        if (hitTargetJackpot) {
+                            // STOP AUTO IMMEDIATELY & OPEN CELEBRATORY 3D POPUP!
+                            stopAutoOpen('jackpot');
+                            showRewardModal(count, wonCounts, emptyCount, bestItemInBatch, totalWonInBatch);
+                        } else {
+                            // Show floating toast of what just dropped & continue auto-opening!
+                            showAutoHitToast(bestItemInBatch, totalWonInBatch);
+                            if (autoOpenState.active) {
+                                autoOpenState.timerId = setTimeout(runAutoStep, 220);
+                            }
+                        }
+                    } else {
+                        showRewardModal(count, wonCounts, emptyCount, bestItemInBatch, totalWonInBatch);
+                    }
                 } else {
                     // ALL CHESTS WERE EMPTY
                     chestAnim.state = 'open_empty';
@@ -1381,22 +1622,45 @@
                     chestGroup.userData.innerCore.material.color.setHex(0x475569);
                     chestGroup.userData.runeRing.material.color.setHex(0x38bdf8);
 
-                    spawnChestBurstParticles(0x94a3b8, 22, true);
+                    spawnChestBurstParticles(0x94a3b8, isAutoRoll ? 12 : 20, true);
                     playSound('empty');
 
-                    const forcePopupOnEmpty = document.getElementById('chkPopupOnEmpty').checked;
-                    if (forcePopupOnEmpty) {
-                        showRewardModal(count, {}, emptyCount, null, 0);
+                    if (isAutoRoll) {
+                        updateAutoLiveFeedUI({}, null);
+                        if (autoOpenState.active) {
+                            autoOpenState.timerId = setTimeout(runAutoStep, 175);
+                        }
                     } else {
-                        showEmptyRollToast(count);
+                        const forcePopupOnEmpty = document.getElementById('chkPopupOnEmpty').checked;
+                        if (forcePopupOnEmpty) {
+                            showRewardModal(count, {}, emptyCount, null, 0);
+                        } else {
+                            showEmptyRollToast(count);
+                        }
                     }
                 }
-            }, 160);
+            }, shakeDuration);
+        }
+
+        function showAutoHitToast(bestItem, totalInBatch) {
+            const container = document.getElementById('toastContainer');
+            container.innerHTML = '';
+            const toast = document.createElement('div');
+            toast.className = 'toast-anim absolute left-1/2 bottom-0.5 glass-panel px-3.5 py-1.5 rounded-2xl border shadow-xl flex items-center gap-2 whitespace-nowrap';
+            toast.style.borderColor = bestItem.color;
+            toast.innerHTML = `
+                <i class="fa-solid fa-cube text-sm" style="color:${bestItem.color}"></i>
+                <span class="text-xs font-display font-bold text-white">
+                    ¡Tocó ${bestItem.name}!
+                </span>
+                ${totalInBatch > 1 ? `<span class="text-[10px] px-1.5 py-0.5 rounded-md bg-white/10 text-amber-300 font-bold">+${totalInBatch - 1} más</span>` : ''}
+            `;
+            container.appendChild(toast);
         }
 
         function repeatLastBatch() {
             closeRewardModal();
-            openChestBatch(state.lastBatchSize || 10);
+            openChestBatch(state.lastBatchSize || 10, false);
         }
 
         /********************************************************************
